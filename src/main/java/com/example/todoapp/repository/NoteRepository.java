@@ -29,6 +29,9 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
 
     @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.deleted = false AND t.name = :tagName ORDER BY n.favorite DESC, n.updatedAt DESC")
     List<Note> findByTagName(@Param("tagName") String tagName);
+    
+    @Query("SELECT n FROM Note n WHERE n.deleted = false AND n.bucketId = :bucketId ORDER BY n.favorite DESC, n.updatedAt DESC")
+    List<Note> findByBucketId(@Param("bucketId") Long bucketId);
 
     @Query("SELECT n FROM Note n WHERE n.deleted = true ORDER BY n.deletedAt DESC")
     List<Note> findAllDeleted();

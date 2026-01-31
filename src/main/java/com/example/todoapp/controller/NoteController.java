@@ -1,5 +1,6 @@
 package com.example.todoapp.controller;
 
+import com.example.todoapp.dto.SearchResultDTO;
 import com.example.todoapp.model.Note;
 import com.example.todoapp.model.SubNote;
 import com.example.todoapp.model.Task;
@@ -42,28 +43,36 @@ public class NoteController {
     public String listNotes(Model model,
                            @RequestParam(required = false) String search,
                            @RequestParam(required = false) List<Long> tagIds,
+                           @RequestParam(required = false) Long bucketId,
                            @RequestParam(required = false) String quickFilter,
                            HttpServletRequest request) {
         
-        // Get all tags for the filter dropdown
+        // Get all tags and buckets for the filter dropdown
         List<Tag> allTags = tagService.findAll();
+        List<Bucket> allBuckets = bucketService.getAllBuckets();
         model.addAttribute("allTags", allTags);
+        model.addAttribute("allBuckets", allBuckets);
         
         // Apply filters
-        boolean hasFilters = (search != null && !search.isBlank()) || (tagIds != null && !tagIds.isEmpty());
-        
-        List<Note> notes;
-        Set<Long> tagIdSet = tagIds != null ? new HashSet<>(tagIds) : Collections.emptySet();
+        boolean hasFilters = (search != null && !search.isBlank()) || (tagIds != null && !tagIds.isEmpty()) || (bucketId != null);
         
         if (hasFilters) {
-            notes = noteService.findNotesFiltered(search, tagIdSet);
+            // Use combined filter method that handles search, tags, and bucket together
+            Set<Long> tagIdSet = tagIds != null ? new HashSet<>(tagIds) : Collections.emptySet();
+            List<SearchResultDTO> searchResults = noteService.findByFilters(search, tagIdSet, bucketId);
+            model.addAttribute("searchResults", searchResults);
+            model.addAttribute("notes", Collections.emptyList()); // Empty for backward compatibility
         } else {
-            notes = noteService.findAll();
+            // No filters - show all notes
+            List<Note> notes = noteService.findAll();
+            model.addAttribute("notes", notes);
+            model.addAttribute("searchResults", Collections.emptyList());
         }
         
-        model.addAttribute("notes", notes);
+        Set<Long> tagIdSet = tagIds != null ? new HashSet<>(tagIds) : Collections.emptySet();
         model.addAttribute("search", search);
         model.addAttribute("selectedTagIds", tagIdSet);
+        model.addAttribute("selectedBucketId", bucketId);
         
         // Build applied filters label
         StringBuilder filterLabel = new StringBuilder();
@@ -71,6 +80,10 @@ public class NoteController {
         if (tagIdSet != null && !tagIdSet.isEmpty()) filterLabel.append("Tags: ").append(
                 allTags.stream().filter(t -> tagIdSet.contains(t.getId())).map(Tag::getName)
                         .collect(Collectors.joining(", "))).append("; ");
+        if (bucketId != null) {
+            allBuckets.stream().filter(b -> b.getId().equals(bucketId)).findFirst()
+                    .ifPresent(b -> filterLabel.append("Bucket: ").append(b.getName()).append("; "));
+        }
         
         model.addAttribute("appliedFilters", filterLabel.length() > 0 ? filterLabel.toString() : "");
 
@@ -93,8 +106,28 @@ public class NoteController {
     @GetMapping("/add")
     public String showAddForm(Model model) {
         model.addAttribute("note", new Note());
-        model.addAttribute("allTags", tagService.findAll());
+        List<Tag> allTags = tagService.findAll();
+        model.addAttribute("allTags", allTags);
         model.addAttribute("allBuckets", bucketService.getAllBuckets());
+        
+        // Create JSON string for tags
+        StringBuilder tagsJson = new StringBuilder("[");
+        if (allTags != null) {
+            boolean first = true;
+            for (Tag tag : allTags) {
+                if (tag != null && tag.getName() != null) {
+                    if (!first) tagsJson.append(",");
+                    tagsJson.append("{")
+                        .append("\"id\":").append(tag.getId()).append(",")
+                        .append("\"name\":\"").append(escapeJson(tag.getName())).append("\"")
+                        .append("}");
+                    first = false;
+                }
+            }
+        }
+        tagsJson.append("]");
+        model.addAttribute("tagsJson", tagsJson.toString());
+        
         return "add-note";
     }
 
@@ -102,10 +135,12 @@ public class NoteController {
     public String addNote(@Valid @ModelAttribute("note") Note note, 
                          BindingResult result, 
                          @RequestParam(required = false) List<Long> tagIds,
+                         @RequestParam(required = false) Long bucketId,
                          @RequestParam(required = false) Boolean nested,
                          @RequestParam(required = false) List<String> subNoteHeaders,
                          @RequestParam(required = false) List<String> subNoteDescriptions,
                          @RequestParam(required = false) List<Long> subNoteBucketIds,
+                         @RequestParam(required = false) List<String> subNoteTagIds,
                          Model model) {
         if (result.hasErrors()) {
             model.addAttribute("allTags", tagService.findAll());
@@ -121,6 +156,13 @@ public class NoteController {
         
         // Get default bucket
         Bucket defaultBucket = bucketService.getDefaultBucket();
+        
+        // Set bucket ID for the note (default to "Today" if not specified)
+        if (bucketId != null) {
+            note.setBucketId(bucketId);
+        } else if (defaultBucket != null) {
+            note.setBucketId(defaultBucket.getId());
+        }
         
         // Handle nested flag and sub-notes
         note.setNested(nested != null && nested);
@@ -138,6 +180,28 @@ public class NoteController {
                         subNote.setBucketId(subNoteBucketIds.get(i));
                     } else if (defaultBucket != null) {
                         subNote.setBucketId(defaultBucket.getId());
+                    }
+                    
+                    // Handle subnote tags
+                    if (subNoteTagIds != null && i < subNoteTagIds.size() && subNoteTagIds.get(i) != null && !subNoteTagIds.get(i).isEmpty()) {
+                        String[] tagIdArray = subNoteTagIds.get(i).split(",");
+                        Set<Tag> subNoteTags = new HashSet<>();
+                        System.out.println("[NOTE CONTROLLER CREATE] SubNote " + i + " tags: " + subNoteTagIds.get(i));
+                        for (String tagIdStr : tagIdArray) {
+                            try {
+                                Long tagId = Long.parseLong(tagIdStr.trim());
+                                tagService.findById(tagId).ifPresent(tag -> {
+                                    subNoteTags.add(tag);
+                                    System.out.println("[NOTE CONTROLLER CREATE] Added tag: " + tag.getName());
+                                });
+                            } catch (NumberFormatException e) {
+                                // Skip invalid tag IDs
+                            }
+                        }
+                        subNote.setTags(subNoteTags);
+                        System.out.println("[NOTE CONTROLLER CREATE] SubNote final tag count: " + subNoteTags.size());
+                    } else {
+                        System.out.println("[NOTE CONTROLLER CREATE] SubNote " + i + " has no tags");
                     }
                     
                     note.addSubNote(subNote);
@@ -213,7 +277,19 @@ public class NoteController {
                         .append("\"header\":\"").append(escapeJson(subNote.getHeader())).append("\",")
                         .append("\"description\":\"").append(escapeJson(subNote.getDescription())).append("\",")
                         .append("\"linkedNoteId\":").append(subNote.getLinkedNoteId() != null ? subNote.getLinkedNoteId() : "null").append(",")
-                        .append("\"bucketId\":").append(subNote.getBucketId() != null ? subNote.getBucketId() : "null")
+                        .append("\"bucketId\":").append(subNote.getBucketId() != null ? subNote.getBucketId() : "null").append(",")
+                        .append("\"tagIds\":[");
+                    
+                    // Add tag IDs
+                    if (subNote.getTags() != null && !subNote.getTags().isEmpty()) {
+                        int tagIndex = 0;
+                        for (Tag tag : subNote.getTags()) {
+                            if (tagIndex > 0) subNotesJson.append(",");
+                            subNotesJson.append(tag.getId());
+                            tagIndex++;
+                        }
+                    }
+                    subNotesJson.append("]")
                         .append("}");
                 }
             }
@@ -222,6 +298,25 @@ public class NoteController {
         } else {
             model.addAttribute("subNotesJson", "[]");
         }
+        
+        // Create JSON string for tags
+        List<Tag> allTags = tagService.findAll();
+        StringBuilder tagsJson = new StringBuilder("[");
+        if (allTags != null) {
+            boolean first = true;
+            for (Tag tag : allTags) {
+                if (tag != null && tag.getName() != null) {
+                    if (!first) tagsJson.append(",");
+                    tagsJson.append("{")
+                        .append("\"id\":").append(tag.getId()).append(",")
+                        .append("\"name\":\"").append(escapeJson(tag.getName())).append("\"")
+                        .append("}");
+                    first = false;
+                }
+            }
+        }
+        tagsJson.append("]");
+        model.addAttribute("tagsJson", tagsJson.toString());
         
         return "edit-note";
     }
@@ -240,12 +335,14 @@ public class NoteController {
                            @Valid @ModelAttribute("note") Note note,
                            BindingResult result,
                            @RequestParam(required = false) List<Long> tagIds,
+                           @RequestParam(required = false) Long bucketId,
                            @RequestParam(required = false) Boolean nested,
                            @RequestParam(required = false) List<String> subNoteHeaders,
                            @RequestParam(required = false) List<String> subNoteDescriptions,
                            @RequestParam(required = false) List<Long> subNoteIds,
                            @RequestParam(required = false) List<Long> subNoteLinkedNoteIds,
                            @RequestParam(required = false) List<Long> subNoteBucketIds,
+                           @RequestParam(required = false) List<String> subNoteTagIds,
                            Model model,
                            RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
@@ -261,6 +358,9 @@ public class NoteController {
         
         note.setId(id);
         
+        // Preserve lastTrackedDate
+        note.setLastTrackedDate(existingNote.getLastTrackedDate());
+        
         // Handle tags by IDs
         if (tagIds != null && !tagIds.isEmpty()) {
             List<Tag> selectedTags = tagService.findAllByIds(tagIds);
@@ -272,9 +372,19 @@ public class NoteController {
         // Get default bucket
         Bucket defaultBucket = bucketService.getDefaultBucket();
         
+        // Set bucket ID for the note (default to "Today" if not specified)
+        if (bucketId != null) {
+            note.setBucketId(bucketId);
+        } else if (defaultBucket != null) {
+            note.setBucketId(defaultBucket.getId());
+        }
+        
         // Handle nested flag and sub-notes
         boolean wantsNested = nested != null && nested;
         int existingSubNotesCount = existingNote.getSubNotes() != null ? existingNote.getSubNotes().size() : 0;
+        
+        // Create final reference for lambda
+        final Note finalExistingNote = existingNote;
         
         // Validation: Can't disable nested if more than 1 sub-note exists
         if (!wantsNested && existingSubNotesCount > 1) {
@@ -293,9 +403,18 @@ public class NoteController {
                 if (subNoteHeaders.get(i) != null && !subNoteHeaders.get(i).trim().isEmpty()) {
                     SubNote subNote = new SubNote();
                     
-                    // If we have an existing sub-note ID, preserve it
+                    // If we have an existing sub-note ID, preserve it and its lastTrackedDate
                     if (subNoteIds != null && i < subNoteIds.size() && subNoteIds.get(i) != null) {
-                        subNote.setId(subNoteIds.get(i));
+                        Long subNoteId = subNoteIds.get(i);
+                        subNote.setId(subNoteId);
+                        
+                        // Find and preserve lastTrackedDate from existing subnote
+                        for (SubNote existingSubNote : finalExistingNote.getSubNotes()) {
+                            if (existingSubNote.getId().equals(subNoteId)) {
+                                subNote.setLastTrackedDate(existingSubNote.getLastTrackedDate());
+                                break;
+                            }
+                        }
                     }
                     
                     subNote.setHeader(subNoteHeaders.get(i));
@@ -317,6 +436,28 @@ public class NoteController {
                         subNote.setDescription(subNoteDescriptions != null && i < subNoteDescriptions.size() 
                             ? subNoteDescriptions.get(i) : "");
                         subNote.setLinkedNoteId(null); // Clear link when has description
+                    }
+                    
+                    // Handle subnote tags
+                    if (subNoteTagIds != null && i < subNoteTagIds.size() && subNoteTagIds.get(i) != null && !subNoteTagIds.get(i).isEmpty()) {
+                        String[] tagIdArray = subNoteTagIds.get(i).split(",");
+                        Set<Tag> subNoteTags = new HashSet<>();
+                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " tags: " + subNoteTagIds.get(i));
+                        for (String tagIdStr : tagIdArray) {
+                            try {
+                                Long tagId = Long.parseLong(tagIdStr.trim());
+                                tagService.findById(tagId).ifPresent(tag -> {
+                                    subNoteTags.add(tag);
+                                    System.out.println("[NOTE CONTROLLER UPDATE] Added tag: " + tag.getName());
+                                });
+                            } catch (NumberFormatException e) {
+                                // Skip invalid tag IDs
+                            }
+                        }
+                        subNote.setTags(subNoteTags);
+                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote final tag count: " + subNoteTags.size());
+                    } else {
+                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " has no tags");
                     }
                     
                     subNote.setDisplayOrder(i);
@@ -425,6 +566,22 @@ public class NoteController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Failed to move sub-note: " + e.getMessage());
+        }
+        return response;
+    }
+    
+    @PostMapping("/{noteId}/move-bucket")
+    @ResponseBody
+    public Map<String, Object> moveNoteToBucket(@PathVariable("noteId") Long noteId,
+                                                 @RequestParam("bucketId") Long bucketId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            noteService.updateNoteBucket(noteId, bucketId);
+            response.put("success", true);
+            response.put("message", "Note moved to new bucket successfully");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Failed to move note: " + e.getMessage());
         }
         return response;
     }

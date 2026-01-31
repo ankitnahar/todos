@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Setter
 @Getter
@@ -32,6 +34,12 @@ public class SubNote {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "note_id")
     private Note note;
+    
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "sub_note_tags",
+            joinColumns = @JoinColumn(name = "sub_note_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private Set<Tag> tags = new HashSet<>();
 
     @Column(name = "display_order")
     private Integer displayOrder;

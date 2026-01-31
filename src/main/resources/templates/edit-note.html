@@ -7,6 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <script>
@@ -352,6 +354,236 @@
             background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
         }
         
+        /* Select2 Custom Styling for Subnote Tags */
+        .sub-note-item .select2-container--bootstrap4 .select2-selection {
+            min-height: 32px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+        
+        .sub-note-item .select2-container--bootstrap4 .select2-selection--multiple {
+            min-height: 32px;
+            padding: 0.15rem 0.25rem;
+        }
+        
+        .sub-note-item .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice {
+            background-color: #007bff;
+            border: none;
+            color: white;
+            padding: 2px 8px;
+            margin: 2px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .sub-note-item .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice__remove {
+            color: white;
+            margin-right: 4px;
+        }
+        
+        .sub-note-item .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice__remove:hover {
+            color: #ffc107;
+        }
+        
+        .select2-container--bootstrap4 .select2-selection__placeholder {
+            color: #6c757d;
+            font-size: 0.875rem;
+        }
+        
+        .select2-dropdown {
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+        
+        .select2-results__option {
+            padding: 6px 12px;
+        }
+        
+        .select2-container--bootstrap4 .select2-results__option--highlighted {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        /* Tag badge styling */
+        .btn-subnote-tags {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            margin-left: 0.5rem;
+            border-radius: 3px;
+        }
+        
+        .subnote-tag-modal .modal-body {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .subnote-tag-search-container {
+            position: relative;
+        }
+        
+        .subnote-tag-list {
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 0.5rem;
+        }
+        
+        .subnote-tag-item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .subnote-tag-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .subnote-tag-item.selected {
+            background-color: #e7f3ff;
+            border-left: 3px solid #007bff;
+            padding-left: calc(0.75rem - 3px);
+        }
+        
+        .subnote-tag-item input[type="checkbox"] {
+            display: none;
+        }
+        
+        .subnote-tag-item label {
+            cursor: pointer;
+            margin: 0;
+            flex: 1;
+            user-select: none;
+        }
+        
+        .subnote-tag-item .tag-check {
+            color: #007bff;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .subnote-tag-item.selected .tag-check {
+            display: inline;
+        }
+        
+        .tag-badge {
+            background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%);
+            color: #1565c0;
+            padding: 0.1rem 0.35rem;
+            border-radius: 8px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            border: 1px solid #bbdefb;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+            display: inline-block;
+            margin-right: 0.2rem;
+            margin-bottom: 0.15rem;
+        }
+        
+        .selected-tags-display {
+            margin-top: 0;
+            padding-left: 1rem;
+            padding-bottom: 0.2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.2rem;
+            min-height: 0;
+        }
+        
+        /* Tag dropdown styling */
+        .tag-dropdown-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tag-dropdown-btn {
+            background: white;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: all 0.2s;
+            min-width: 100px;
+        }
+        
+        .tag-dropdown-btn:hover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        
+        .tag-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1050;
+            background: white;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 200px;
+            max-width: 300px;
+            margin-top: 4px;
+        }
+        
+        .tag-dropdown-menu.show {
+            display: block;
+        }
+        
+        .tag-search-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: none;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 0.875rem;
+            outline: none;
+        }
+        
+        .tag-search-input:focus {
+            border-bottom-color: #007bff;
+        }
+        
+        .tag-options-list {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 0.25rem 0;
+        }
+        
+        .tag-option-item {
+            padding: 0.4rem 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            transition: background-color 0.15s;
+        }
+        
+        .tag-option-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .tag-option-item input[type="checkbox"] {
+            cursor: pointer;
+        }
+        
+        .tag-option-item label {
+            cursor: pointer;
+            margin: 0;
+            flex: 1;
+            font-weight: normal;
+        }
+        
         .sub-note-item.linked::before {
             content: '🔗';
             position: absolute;
@@ -452,7 +684,7 @@
             display: flex;
             gap: 0.5rem;
             align-items: center;
-            padding: 0.5rem 1rem;
+            padding: 0.25rem 1rem;
             background: transparent;
             justify-content: space-between;
         }
@@ -549,11 +781,11 @@
         
         .sub-note-description-section {
             display: none;
-            margin-top: 0.5rem;
-            padding: 0.75rem;
+            margin-top: 0.25rem;
+            padding: 0.5rem;
             margin-left: 1rem;
             margin-right: 1rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.35rem;
             border-radius: 8px;
             background: linear-gradient(white, white) padding-box,
                         linear-gradient(135deg, #667eea 0%, #764ba2 100%) border-box;
@@ -609,6 +841,17 @@
                         <label for="name">Name *</label>
                         <input type="text" class="form-control" id="name" th:field="*{name}" required>
                         <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="bucketId">Bucket</label>
+                        <select class="form-control" id="bucketId" name="bucketId">
+                            <option th:each="bucket : ${allBuckets}" 
+                                    th:value="${bucket.id}" 
+                                    th:text="${bucket.name}"
+                                    th:selected="${note.bucketId != null && bucket.id.equals(note.bucketId)}"></option>
+                        </select>
+                        <small class="form-text text-muted">Organize this note in a bucket</small>
                     </div>
 
                     <div class="form-group">
@@ -688,12 +931,46 @@
         </div>
     </div>
 
+    <!-- SubNote Tags Modal -->
+    <div class="modal fade subnote-tag-modal" id="subNoteTagsModal" tabindex="-1" role="dialog" aria-labelledby="subNoteTagsModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="subNoteTagsModalLabel">Select Tags for SubNote</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="subnote-tag-search-container">
+                        <input type="text" id="subNoteTagSearch" class="form-control" placeholder="Search tags..." autocomplete="off">
+                        <div id="subNoteTagList" class="subnote-tag-list border rounded p-2 mt-2">
+                            <!-- Tag checkboxes will be rendered here -->
+                        </div>
+                    </div>
+                    <div id="modalSelectedTags" class="mt-3" style="display: none;">
+                        <small class="text-muted">Selected tags:</small>
+                        <div id="modalSelectedTagsContainer"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="applySubNoteTags()">Apply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Hidden element to pass sub-notes data safely from server to JavaScript -->
     <script type="application/json" id="subNotesData" th:utext="${subNotesJson}">[]</script>
+    <script type="application/json" id="tagsData" th:utext="${tagsJson}">[]</script>
+    <!-- Debug: Show tagsJson content -->
+    <div style="display:none;" id="debug-tags">Tags JSON: <span th:text="${tagsJson}"></span></div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         let subNoteCount = 0;
         let subNoteEditors = {};
@@ -701,6 +978,34 @@
         let initialSubNoteCount = 0;
         let defaultBucketId = null;
         let allBuckets = [];
+        let allTags = [];
+        
+        // Load tags from JSON
+        try {
+            const tagsDataElement = document.getElementById('tagsData');
+            console.log('tagsDataElement:', tagsDataElement);
+            if (tagsDataElement) {
+                console.log('tagsDataElement.textContent:', tagsDataElement.textContent);
+                console.log('tagsDataElement.textContent length:', tagsDataElement.textContent.length);
+                if (tagsDataElement.textContent && tagsDataElement.textContent.trim().length > 0) {
+                    allTags = JSON.parse(tagsDataElement.textContent);
+                    console.log('Loaded tags:', allTags);
+                    console.log('Number of tags:', allTags.length);
+                } else {
+                    console.error('tagsDataElement.textContent is empty');
+                }
+            } else {
+                console.error('tagsData element not found');
+            }
+        } catch (e) {
+            console.error('Error parsing tags data:', e);
+            console.error('Raw content was:', document.getElementById('tagsData')?.textContent);
+        }
+        
+        // Debug: Log allTags after loading
+        console.log('Final allTags array:', allTags);
+        console.log('Is allTags an array?', Array.isArray(allTags));
+        console.log('allTags.length:', allTags.length);
         
         function copyNoteTitles() {
             const titles = [];
@@ -971,6 +1276,9 @@
         function addSubNote(existingData = null, targetBucketId = null) {
             const index = subNoteCount++;
             
+            console.log('addSubNote called, allTags:', allTags);
+            console.log('allTags length:', allTags.length);
+            
             const headerValue = existingData && existingData.header ? existingData.header.replace(/"/g, '&quot;') : '';
             const descValue = existingData && existingData.description ? existingData.description : '';
             const subNoteId = existingData && existingData.id ? existingData.id : '';
@@ -1003,11 +1311,17 @@
                                    rows="1" style="resize: none; overflow: hidden; min-height: auto;" ${isLinked ? 'readonly' : ''}>${headerValue}</textarea>
                         </div>
                         
-                        <!-- Actions group (bucket, toggle, delete) -->
+                        <!-- Actions group (bucket, tags, toggle, delete) -->
                         <div class="sub-note-actions">
                             <!-- Bucket dropdown -->
                             <select class="form-select" name="subNoteBucketIds" id="bucketId-${index}">
                             </select>
+                            
+                            <!-- Tags button to open modal -->
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-subnote-tags" 
+                                    onclick="openSubNoteTagsModal(${index})" title="Manage tags">
+                                🏷️ Tags
+                            </button>
                             
                             <!-- Description toggle button -->
                             <button type="button" class="toggle-description-btn" onclick="toggleDescription(${index})" 
@@ -1026,6 +1340,9 @@
                         <a href="/notes/${linkedNoteId}/edit" target="_blank">✏️ Edit Linked Note</a>
                     </div>
                     ` : ''}
+                    
+                    <!-- Selected Tags Display -->
+                    <div class="selected-tags-display" id="selectedTags-${index}"></div>
                     
                     <!-- Description Section (hidden for linked notes) -->
                     <div class="sub-note-description-section" id="descSection-${index}" style="display: ${isLinked ? 'none' : ''};">
@@ -1131,8 +1448,161 @@
                 }, 0);
             }
             
+            // Store existing tags for this subnote
+            if (existingData && existingData.tagIds && existingData.tagIds.length > 0) {
+                if (!window.subNoteTagsData) window.subNoteTagsData = {};
+                window.subNoteTagsData[index] = existingData.tagIds;
+                updateSubNoteTagDisplay(index);
+            }
+            
             updateEmptyBuckets();
             updateBucketCounts();
+            checkForChanges();
+        }
+        
+        // Variables for modal tag selection
+        let currentSubNoteIndex = null;
+        
+        // Open tags modal for a subnote
+        function openSubNoteTagsModal(index) {
+            currentSubNoteIndex = index;
+            
+            // Initialize subNoteTagsData if not exists
+            if (!window.subNoteTagsData) window.subNoteTagsData = {};
+            if (!window.subNoteTagsData[index]) window.subNoteTagsData[index] = [];
+            
+            const currentSelectedTags = window.subNoteTagsData[index];
+            
+            // Populate tag list in modal
+            const tagList = document.getElementById('subNoteTagList');
+            tagList.innerHTML = '';
+            
+            allTags.forEach(tag => {
+                const isChecked = currentSelectedTags.includes(tag.id);
+                const tagItemHtml = `
+                    <div class="subnote-tag-item ${isChecked ? 'selected' : ''}" data-tag-name="${tag.name}" onclick="toggleSubNoteTag(${tag.id})">
+                        <input class="form-check-input subnote-tag-checkbox" type="checkbox" 
+                               id="subnoteTag_${tag.id}" 
+                               value="${tag.id}" 
+                               ${isChecked ? 'checked' : ''}>
+                        <label class="form-check-label" for="subnoteTag_${tag.id}">${tag.name}</label>
+                        <span class="tag-check">✓</span>
+                    </div>
+                `;
+                tagList.insertAdjacentHTML('beforeend', tagItemHtml);
+            });
+            
+            // Add search functionality
+            const searchInput = document.getElementById('subNoteTagSearch');
+            searchInput.value = '';
+            searchInput.oninput = function() {
+                const searchTerm = this.value.toLowerCase();
+                document.querySelectorAll('.subnote-tag-item').forEach(item => {
+                    const tagName = item.getAttribute('data-tag-name').toLowerCase();
+                    item.style.display = tagName.includes(searchTerm) ? '' : 'none';
+                });
+            };
+            
+            // Update selected tags display in modal
+            updateModalSelectedTags();
+            
+            // Show modal
+            $('#subNoteTagsModal').modal('show');
+        }
+        
+        // Toggle tag selection
+        function toggleSubNoteTag(tagId) {
+            const checkbox = document.getElementById(`subnoteTag_${tagId}`);
+            const tagItem = checkbox.closest('.subnote-tag-item');
+            
+            checkbox.checked = !checkbox.checked;
+            
+            if (checkbox.checked) {
+                tagItem.classList.add('selected');
+            } else {
+                tagItem.classList.remove('selected');
+            }
+            
+            updateModalSelectedTags();
+        }
+        
+        // Update selected tags display in modal
+        function updateModalSelectedTags() {
+            const checkedBoxes = document.querySelectorAll('.subnote-tag-checkbox:checked');
+            const container = document.getElementById('modalSelectedTagsContainer');
+            const selectedSection = document.getElementById('modalSelectedTags');
+            
+            if (checkedBoxes.length === 0) {
+                selectedSection.style.display = 'none';
+                return;
+            }
+            
+            selectedSection.style.display = 'block';
+            container.innerHTML = '';
+            
+            checkedBoxes.forEach(checkbox => {
+                const label = document.querySelector(`label[for="${checkbox.id}"]`);
+                const tagName = label ? label.textContent : '';
+                const badge = document.createElement('span');
+                badge.className = 'tag-badge';
+                badge.innerHTML = `${tagName} <span class="tag-remove" onclick="removeModalTag('${checkbox.id}')">&times;</span>`;
+                container.appendChild(badge);
+            });
+        }
+        
+        // Remove tag from modal
+        function removeModalTag(checkboxId) {
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                checkbox.checked = false;
+                updateModalSelectedTags();
+            }
+        }
+        
+        // Apply selected tags to subnote
+        function applySubNoteTags() {
+            if (currentSubNoteIndex === null) return;
+            
+            const checkedBoxes = document.querySelectorAll('.subnote-tag-checkbox:checked');
+            const selectedTagIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+            
+            // Store selected tags
+            if (!window.subNoteTagsData) window.subNoteTagsData = {};
+            window.subNoteTagsData[currentSubNoteIndex] = selectedTagIds;
+            
+            // Update tag display for the subnote
+            updateSubNoteTagDisplay(currentSubNoteIndex);
+            
+            // Close modal
+            $('#subNoteTagsModal').modal('hide');
+            
+            // Mark as changed
+            checkForChanges();
+        }
+        
+        // Update tag badges display
+        function updateSubNoteTagDisplay(index) {
+            if (!window.subNoteTagsData) window.subNoteTagsData = {};
+            const selectedTagIds = window.subNoteTagsData[index] || [];
+            const selectedTagsDisplay = document.getElementById(`selectedTags-${index}`);
+            
+            if (!selectedTagsDisplay) return;
+            
+            if (selectedTagIds.length === 0) {
+                selectedTagsDisplay.innerHTML = '';
+                return;
+            }
+            
+            // Find tag names from allTags
+            const selectedTags = selectedTagIds.map(tagId => {
+                const tag = allTags.find(t => t.id === tagId);
+                return tag ? tag.name : null;
+            }).filter(name => name !== null);
+            
+            selectedTagsDisplay.innerHTML = selectedTags.map(tagName => 
+                `<span class="tag-badge">${tagName}</span>`
+            ).join('');
+            
             checkForChanges();
         }
 
@@ -1489,6 +1959,18 @@
             
             // Clear the unsaved changes flag when form is submitted
             form.addEventListener('submit', function() {
+                // Collect selected tags from subNoteTagsData for all subnotes
+                document.querySelectorAll('.sub-note-item').forEach(subNote => {
+                    const index = subNote.getAttribute('data-index');
+                    const selectedTagIds = (window.subNoteTagsData && window.subNoteTagsData[index]) ? window.subNoteTagsData[index] : [];
+                    
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'subNoteTagIds';
+                    hiddenInput.value = selectedTagIds.join(',');
+                    subNote.appendChild(hiddenInput);
+                });
+                
                 hasUnsavedChanges = false;
             });
         });

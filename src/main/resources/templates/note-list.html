@@ -123,7 +123,7 @@
         }
         
         .filter-card .row {
-            align-items: flex-end;
+            align-items: flex-start;
         }
         
         .filter-card label {
@@ -132,7 +132,8 @@
             color: #495057;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+            display: block;
         }
         
         .filter-card .form-control,
@@ -245,6 +246,20 @@
         
         .note-item:hover::before {
             opacity: 1;
+        }
+        
+        .subnote-result {
+            background-color: #f0f8ff !important;
+            border-left: 3px solid #667eea !important;
+            padding-left: calc(1rem - 3px);
+        }
+        
+        .subnote-result:hover {
+            background-color: #e3f2fd !important;
+        }
+        
+        .parent-note-link a:hover {
+            text-decoration: underline !important;
         }
         
         .note-left {
@@ -589,7 +604,7 @@
         <!-- Filter Card -->
         <div class="filter-card">
             <form method="get" class="row">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="tags" class="form-label">Tags</label>
                     <select id="tags" name="tagIds" class="form-select" multiple>
                         <option th:each="tag : ${allTags}"
@@ -598,7 +613,17 @@
                                 th:selected="${selectedTagIds.contains(tag.id)}"></option>
                     </select>
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-2">
+                    <label for="bucket" class="form-label">Bucket</label>
+                    <select id="bucket" name="bucketId" class="form-select">
+                        <option value="">All Buckets</option>
+                        <option th:each="bucket : ${allBuckets}"
+                                th:value="${bucket.id}"
+                                th:text="${bucket.name}"
+                                th:selected="${selectedBucketId != null && selectedBucketId == bucket.id}"></option>
+                    </select>
+                </div>
+                <div class="col-md-4">
                     <label for="search" class="form-label">Search</label>
                     <input type="search" id="search" name="search" placeholder="Search notes..." 
                            class="form-control" th:value="${search}"/>
@@ -614,7 +639,7 @@
         </div>
 
         <!-- Notes List -->
-        <div th:if="${notes.empty}" class="no-notes-message">
+        <div th:if="${notes.empty && searchResults.empty}" class="no-notes-message">
             <div class="alert alert-info">
                 <h4>📝 No notes found!</h4>
                 <p>Start organizing your thoughts by adding your first note.</p>
@@ -622,7 +647,137 @@
             </div>
         </div>
 
-        <div class="notes-list" th:if="${!notes.empty}">
+        <!-- Search Results (notes + subnotes) -->
+        <div class="notes-list" th:if="${!searchResults.empty}">
+            <div th:each="result, iterStat : ${searchResults}" 
+                 class="note-item"
+                 th:classappend="${result.type == 'SUBNOTE' ? 'subnote-result' : ''}"
+                 th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}"
+                 th:attr="data-note-url=${result.type == 'NOTE' ? '/notes/' + result.id : '/notes/' + result.parentNoteId}"
+                 ondblclick="handleNoteDoubleClick(event, this)">
+                <div class="note-left">
+                    <button th:if="${result.type == 'NOTE'}"
+                            th:class="${'favorite-btn ' + (result.favorite ? 'active' : '')}" 
+                            th:attr="data-note-id=${result.id}"
+                            onclick="toggleFavorite(this)"
+                            title="Toggle Favorite">
+                        <span class="star-icon"></span>
+                    </button>
+                    <span th:if="${result.type == 'SUBNOTE'}" class="subnote-indicator" title="Sub-Note" style="font-size: 1.2rem; margin-right: 0.5rem;">📎</span>
+                    <div style="flex: 1;">
+                        <h3 class="note-title" th:text="${result.name}">Note Title</h3>
+                        <div th:if="${result.type == 'SUBNOTE'}" class="parent-note-link" style="font-size: 0.75rem; color: #6c757d; margin-top: 0.25rem;">
+                            <span style="opacity: 0.7;">From:</span> <a th:href="@{/notes/{id}(id=${result.parentNoteId})}" th:text="${result.parentNoteName}" style="color: #667eea; text-decoration: none;">Parent Note</a>
+                        </div>
+                    </div>
+                    <div class="note-tags" th:if="${not #lists.isEmpty(result.tags)}">
+                        <span th:each="tag : ${result.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
+                    </div>
+                </div>
+                
+                <div class="note-right">
+                    <span class="note-timestamp" th:text="${#temporals.format(result.updatedAt != null ? result.updatedAt : result.createdAt, 'MMM dd, HH:mm')}">Updated</span>
+                    <div class="note-actions">
+                        <!-- NOTE actions - full set of buttons -->
+                        <button th:if="${result.type == 'NOTE'}" 
+                                class="action-btn track-btn" 
+                                th:attr="data-note-id=${result.id}"
+                                th:class="${'action-btn track-btn ' + (result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
+                                onclick="toggleTrackNote(this, event)"
+                                title="Track for Today"
+                                style="font-size: 1.1em;">
+                            <span th:if="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
+                            <span th:unless="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                        </button>
+                        <!-- Bucket dropdown for NOTE -->
+                        <select th:if="${result.type == 'NOTE'}" 
+                                class="form-select form-select-sm" 
+                                th:data-note-id="${result.id}"
+                                onchange="moveNoteToBucket(this)" 
+                                onclick="event.stopPropagation()"
+                                style="width: auto; display: inline-block; margin-right: 0.5rem; font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <option th:each="b : ${allBuckets}" 
+                                    th:value="${b.id}" 
+                                    th:text="${b.name}"
+                                    th:selected="${result.bucketId != null && b.id.equals(result.bucketId)}"
+                                    th:style="${result.bucketId != null && b.id.equals(result.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
+                        </select>
+                        <button th:if="${result.type == 'NOTE'}" 
+                                class="action-btn copy-btn" 
+                                th:attr="data-note-id=${result.id},data-note-name=${result.name},data-note-details=${result.details}"
+                                onclick="copyNoteToClipboard(this)"
+                                title="Copy to Clipboard">
+                            📋
+                        </button>
+                        <a th:if="${result.type == 'NOTE'}" 
+                           th:href="@{/notes/{id}(id=${result.id})}" 
+                           class="action-btn view-btn" 
+                           title="View">
+                            👁️
+                        </a>
+                        <a th:if="${result.type == 'NOTE'}" 
+                           th:href="@{/notes/{id}/edit(id=${result.id})}" 
+                           class="action-btn edit-btn" 
+                           title="Edit">
+                            ✏️
+                        </a>
+                        <a th:if="${result.type == 'NOTE'}" 
+                           th:href="@{/notes/{id}/duplicate(id=${result.id})}" 
+                           class="action-btn duplicate-btn" 
+                           title="Duplicate">
+                            🔁
+                        </a>
+                        <a th:if="${result.type == 'NOTE'}" 
+                           th:href="@{/notes/{id}/delete(id=${result.id})}" 
+                           class="action-btn delete-btn"
+                           onclick="return confirm('Delete this note?')"
+                           title="Delete">
+                            🗑️
+                        </a>
+                        
+                        <!-- SUBNOTE actions - view and edit parent note only -->
+                        <button th:if="${result.type == 'SUBNOTE'}" 
+                                class="action-btn track-btn" 
+                                th:attr="data-note-id=${result.id}"
+                                th:class="${'action-btn track-btn ' + (result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
+                                onclick="toggleTrackNote(this, event)"
+                                title="Track for Today"
+                                style="font-size: 1.1em;">
+                            <span th:if="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
+                            <span th:unless="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                        </button>
+                        <!-- Bucket dropdown for SUBNOTE -->
+                        <select th:if="${result.type == 'SUBNOTE'}" 
+                                class="form-select form-select-sm" 
+                                th:data-subnote-id="${result.id}"
+                                onchange="moveSubNoteToBucket(this)" 
+                                onclick="event.stopPropagation()"
+                                style="width: auto; display: inline-block; margin-right: 0.5rem; font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <option th:each="b : ${allBuckets}" 
+                                    th:value="${b.id}" 
+                                    th:text="${b.name}"
+                                    th:selected="${result.bucketId != null && b.id.equals(result.bucketId)}"
+                                    th:style="${result.bucketId != null && b.id.equals(result.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
+                        </select>
+                        <a th:if="${result.type == 'SUBNOTE'}" 
+                           th:href="@{/notes/{id}(id=${result.parentNoteId})}" 
+                           class="action-btn view-btn" 
+                           title="View Parent Note">
+                            👁️
+                        </a>
+                        <a th:if="${result.type == 'SUBNOTE'}" 
+                           th:href="@{/notes/{id}/edit(id=${result.parentNoteId})}" 
+                           class="action-btn edit-btn" 
+                           title="Edit Parent Note">
+                            ✏️
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Regular Notes List (when no search) -->
+        <div class="notes-list" th:if="${!notes.empty && searchResults.empty}">
             <div th:each="note, iterStat : ${notes}" 
                  class="note-item"
                  th:classappend="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
@@ -654,6 +809,18 @@
                             <span th:if="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
                             <span th:unless="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
                         </button>
+                        <!-- Bucket dropdown -->
+                        <select class="form-select form-select-sm" 
+                                th:data-note-id="${note.id}"
+                                onchange="moveNoteToBucket(this)" 
+                                onclick="event.stopPropagation()"
+                                style="width: auto; display: inline-block; margin-right: 0.5rem; font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <option th:each="b : ${allBuckets}" 
+                                    th:value="${b.id}" 
+                                    th:text="${b.name}"
+                                    th:selected="${note.bucketId != null && b.id.equals(note.bucketId)}"
+                                    th:style="${note.bucketId != null && b.id.equals(note.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
+                        </select>
                         <button class="action-btn copy-btn" 
                                 th:attr="data-note-id=${note.id},data-note-name=${note.name},data-note-details=${note.details}"
                                 onclick="copyNoteToClipboard(this)"
@@ -879,6 +1046,58 @@
                 console.error('Failed to copy:', err);
                 alert('Failed to copy to clipboard. Please try copying manually.');
             }
+        }
+    
+        function moveNoteToBucket(selectElement) {
+            const noteId = selectElement.getAttribute('data-note-id');
+            const bucketId = selectElement.value;
+            
+            fetch(`/notes/${noteId}/move-bucket`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `bucketId=${bucketId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Optionally show success message or refresh
+                    console.log('Note moved to bucket successfully');
+                } else {
+                    alert(data.message || 'Failed to move note to bucket');
+                    // Optionally revert the selection
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while moving the note');
+            });
+        }
+        
+        function moveSubNoteToBucket(selectElement) {
+            const subNoteId = selectElement.getAttribute('data-subnote-id');
+            const bucketId = selectElement.value;
+            
+            fetch(`/notes/subnote/${subNoteId}/move-bucket`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `bucketId=${bucketId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('SubNote moved to bucket successfully');
+                } else {
+                    alert(data.message || 'Failed to move subnote to bucket');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while moving the subnote');
+            });
         }
     
     function handleNoteDoubleClick(event, noteElement) {

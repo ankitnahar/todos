@@ -1,5 +1,6 @@
 package com.example.todoapp.service;
 
+import com.example.todoapp.dto.SearchResultDTO;
 import com.example.todoapp.model.Note;
 import com.example.todoapp.model.SubNote;
 import com.example.todoapp.model.Task;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -209,6 +211,16 @@ public class NoteService {
     }
     
     @Transactional
+    public void updateNoteBucket(Long noteId, Long bucketId) {
+        Optional<Note> noteOpt = noteRepository.findById(noteId);
+        if (noteOpt.isPresent()) {
+            Note note = noteOpt.get();
+            note.setBucketId(bucketId);
+            noteRepository.save(note);
+        }
+    }
+    
+    @Transactional
     public Note duplicateNote(Long noteId) {
         Optional<Note> originalNoteOpt = noteRepository.findById(noteId);
         if (originalNoteOpt.isPresent()) {
@@ -220,6 +232,7 @@ public class NoteService {
             duplicateNote.setDetails(originalNote.getDetails());
             duplicateNote.setFavorite(originalNote.isFavorite());
             duplicateNote.setNested(originalNote.isNested());
+            duplicateNote.setBucketId(originalNote.getBucketId());
             
             // Copy tags
             if (originalNote.getTags() != null && !originalNote.getTags().isEmpty()) {
@@ -256,6 +269,261 @@ public class NoteService {
     }
 
     public SubNote saveSubNote(SubNote subNote) {
+        return subNoteRepository.save(subNote);
+    }
+    
+    // Search methods that return SearchResultDTO
+    public List<SearchResultDTO> searchAll(String searchText) {
+        List<SearchResultDTO> results = new ArrayList<>();
+        
+        if (searchText == null || searchText.isBlank()) {
+            // Return all notes (no subnotes in this case)
+            List<Note> notes = findAll();
+            for (Note note : notes) {
+                results.add(SearchResultDTO.fromNote(note));
+            }
+            return results;
+        }
+        
+        System.out.println("[SEARCH] Searching for: " + searchText);
+        
+        // Search notes
+        List<Note> matchingNotes = noteRepository.searchNotes(searchText);
+        System.out.println("[SEARCH] Found " + matchingNotes.size() + " matching notes");
+        for (Note note : matchingNotes) {
+            results.add(SearchResultDTO.fromNote(note));
+        }
+        
+        // Search subnotes
+        List<SubNote> matchingSubNotes = subNoteRepository.searchSubNotes(searchText);
+        System.out.println("[SEARCH] Found " + matchingSubNotes.size() + " matching subnotes");
+        for (SubNote subNote : matchingSubNotes) {
+            System.out.println("[SEARCH] SubNote: " + subNote.getHeader() + ", Tags: " + (subNote.getTags() != null ? subNote.getTags().size() : 0));
+            Note parentNote = subNote.getNote();
+            if (parentNote != null && !parentNote.getDeleted()) {
+                results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+            }
+        }
+        
+        // Sort results: favorites first, then by updated date
+        results.sort((r1, r2) -> {
+            int favCompare = Boolean.compare(
+                r2.getFavorite() != null && r2.getFavorite(),
+                r1.getFavorite() != null && r1.getFavorite()
+            );
+            if (favCompare != 0) return favCompare;
+            
+            LocalDateTime date1 = r1.getUpdatedAt() != null ? r1.getUpdatedAt() : r1.getCreatedAt();
+            LocalDateTime date2 = r2.getUpdatedAt() != null ? r2.getUpdatedAt() : r2.getCreatedAt();
+            if (date1 == null && date2 == null) return 0;
+            if (date1 == null) return 1;
+            if (date2 == null) return -1;
+            return date2.compareTo(date1);
+        });
+        
+        return results;
+    }
+    
+    public List<SearchResultDTO> findByTags(Set<Long> tagIds) {
+        List<SearchResultDTO> results = new ArrayList<>();
+        
+        if (tagIds == null || tagIds.isEmpty()) {
+            return results;
+        }
+        
+        System.out.println("[FIND BY TAGS] Searching for tag IDs: " + tagIds);
+        
+        // Find notes with these tags
+        for (Long tagId : tagIds) {
+            List<Note> notesWithTag = noteRepository.findByTagId(tagId);
+            System.out.println("[FIND BY TAGS] Found " + notesWithTag.size() + " notes with tag ID " + tagId);
+            for (Note note : notesWithTag) {
+                if (!note.getDeleted()) {
+                    results.add(SearchResultDTO.fromNote(note));
+                }
+            }
+            
+            // Find subnotes with these tags
+            List<SubNote> subNotesWithTag = subNoteRepository.findByTagId(tagId);
+            System.out.println("[FIND BY TAGS] Found " + subNotesWithTag.size() + " subnotes with tag ID " + tagId);
+            for (SubNote subNote : subNotesWithTag) {
+                Note parentNote = subNote.getNote();
+                if (parentNote != null && !parentNote.getDeleted()) {
+                    results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+                }
+            }
+        }
+        
+        // Remove duplicates (in case a note/subnote has multiple selected tags)
+        Set<String> seenIds = new HashSet<>();
+        results = results.stream()
+            .filter(r -> {
+                String key = r.getType() + "_" + r.getId();
+                if (seenIds.contains(key)) {
+                    return false;
+                }
+                seenIds.add(key);
+                return true;
+            })
+            .collect(Collectors.toList());
+        
+        // Sort results: favorites first, then by updated date
+        results.sort((r1, r2) -> {
+            int favCompare = Boolean.compare(
+                r2.getFavorite() != null && r2.getFavorite(),
+                r1.getFavorite() != null && r1.getFavorite()
+            );
+            if (favCompare != 0) return favCompare;
+            
+            LocalDateTime date1 = r1.getUpdatedAt() != null ? r1.getUpdatedAt() : r1.getCreatedAt();
+            LocalDateTime date2 = r2.getUpdatedAt() != null ? r2.getUpdatedAt() : r2.getCreatedAt();
+            if (date1 == null && date2 == null) return 0;
+            if (date1 == null) return 1;
+            if (date2 == null) return -1;
+            return date2.compareTo(date1);
+        });
+        
+        System.out.println("[FIND BY TAGS] Returning " + results.size() + " total results");
+        return results;
+    }
+    
+    public List<SearchResultDTO> findByBucket(Long bucketId) {
+        List<SearchResultDTO> results = new ArrayList<>();
+        
+        if (bucketId == null) {
+            return results;
+        }
+        
+        System.out.println("[FIND BY BUCKET] Searching for bucket ID: " + bucketId);
+        
+        // Find notes with this bucket
+        List<Note> notesWithBucket = noteRepository.findByBucketId(bucketId);
+        System.out.println("[FIND BY BUCKET] Found " + notesWithBucket.size() + " notes with bucket ID " + bucketId);
+        for (Note note : notesWithBucket) {
+            results.add(SearchResultDTO.fromNote(note));
+        }
+        
+        // Find subnotes with this bucket
+        List<SubNote> subNotesWithBucket = subNoteRepository.findAllByBucketId(bucketId);
+        System.out.println("[FIND BY BUCKET] Found " + subNotesWithBucket.size() + " subnotes with bucket ID " + bucketId);
+        for (SubNote subNote : subNotesWithBucket) {
+            Note parentNote = subNote.getNote();
+            if (parentNote != null && !parentNote.getDeleted()) {
+                results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+            }
+        }
+        
+        // Sort results: favorites first, then by updated date
+        results.sort((r1, r2) -> {
+            int favCompare = Boolean.compare(
+                r2.getFavorite() != null && r2.getFavorite(),
+                r1.getFavorite() != null && r1.getFavorite()
+            );
+            if (favCompare != 0) return favCompare;
+            
+            LocalDateTime date1 = r1.getUpdatedAt() != null ? r1.getUpdatedAt() : r1.getCreatedAt();
+            LocalDateTime date2 = r2.getUpdatedAt() != null ? r2.getUpdatedAt() : r2.getCreatedAt();
+            if (date1 == null && date2 == null) return 0;
+            if (date1 == null) return 1;
+            if (date2 == null) return -1;
+            return date2.compareTo(date1);
+        });
+        
+        System.out.println("[FIND BY BUCKET] Returning " + results.size() + " total results");
+        return results;
+    }
+    
+    public List<SearchResultDTO> findByFilters(String search, Set<Long> tagIds, Long bucketId) {
+        List<SearchResultDTO> results = new ArrayList<>();
+        Set<String> resultKeys = new HashSet<>();
+        
+        // Search by text if provided
+        if (search != null && !search.isBlank()) {
+            List<SearchResultDTO> searchResults = searchAll(search);
+            for (SearchResultDTO result : searchResults) {
+                String key = result.getType() + "_" + result.getId();
+                if (resultKeys.add(key)) {
+                    results.add(result);
+                }
+            }
+        }
+        
+        // Filter by tags if provided
+        if (tagIds != null && !tagIds.isEmpty()) {
+            List<SearchResultDTO> tagResults = findByTags(tagIds);
+            if (search != null && !search.isBlank()) {
+                // Intersect with existing results
+                Set<String> currentKeys = new HashSet<>(resultKeys);
+                resultKeys.clear();
+                results.clear();
+                for (SearchResultDTO result : tagResults) {
+                    String key = result.getType() + "_" + result.getId();
+                    if (currentKeys.contains(key)) {
+                        resultKeys.add(key);
+                        results.add(result);
+                    }
+                }
+            } else {
+                // No search, just add tag results
+                for (SearchResultDTO result : tagResults) {
+                    String key = result.getType() + "_" + result.getId();
+                    if (resultKeys.add(key)) {
+                        results.add(result);
+                    }
+                }
+            }
+        }
+        
+        // Filter by bucket if provided
+        if (bucketId != null) {
+            List<SearchResultDTO> bucketResults = findByBucket(bucketId);
+            if ((search != null && !search.isBlank()) || (tagIds != null && !tagIds.isEmpty())) {
+                // Intersect with existing results
+                Set<String> currentKeys = new HashSet<>(resultKeys);
+                resultKeys.clear();
+                results.clear();
+                for (SearchResultDTO result : bucketResults) {
+                    String key = result.getType() + "_" + result.getId();
+                    if (currentKeys.contains(key)) {
+                        resultKeys.add(key);
+                        results.add(result);
+                    }
+                }
+            } else {
+                // No search or tags, just add bucket results
+                for (SearchResultDTO result : bucketResults) {
+                    String key = result.getType() + "_" + result.getId();
+                    if (resultKeys.add(key)) {
+                        results.add(result);
+                    }
+                }
+            }
+        }
+        
+        // Sort results: favorites first, then by updated date
+        results.sort((r1, r2) -> {
+            int favCompare = Boolean.compare(
+                r2.getFavorite() != null && r2.getFavorite(),
+                r1.getFavorite() != null && r1.getFavorite()
+            );
+            if (favCompare != 0) return favCompare;
+            
+            LocalDateTime date1 = r1.getUpdatedAt() != null ? r1.getUpdatedAt() : r1.getCreatedAt();
+            LocalDateTime date2 = r2.getUpdatedAt() != null ? r2.getUpdatedAt() : r2.getCreatedAt();
+            if (date1 == null && date2 == null) return 0;
+            if (date1 == null) return 1;
+            if (date2 == null) return -1;
+            return date2.compareTo(date1);
+        });
+        
+        return results;
+    }
+    
+    public SubNote saveSubNoteWithTags(SubNote subNote, Set<String> tagNames) {
+        if (tagNames != null && !tagNames.isEmpty()) {
+            Set<Tag> tags = tagService.findOrCreateTags(tagNames);
+            subNote.setTags(tags);
+        }
         return subNoteRepository.save(subNote);
     }
 }

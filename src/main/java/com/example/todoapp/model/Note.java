@@ -45,6 +45,9 @@ public class Note {
     @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean nested = false;
 
+    @Column(name = "bucket_id")
+    private Long bucketId;
+
     @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("displayOrder ASC")
     private List<SubNote> subNotes = new ArrayList<>();
@@ -167,5 +170,13 @@ public class Note {
 
     public void setLastTrackedDate(LocalDateTime lastTrackedDate) {
         this.lastTrackedDate = lastTrackedDate;
+    }
+
+    public Long getBucketId() {
+        return bucketId;
+    }
+
+    public void setBucketId(Long bucketId) {
+        this.bucketId = bucketId;
     }
 }
