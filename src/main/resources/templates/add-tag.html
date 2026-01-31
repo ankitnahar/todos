@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Tag</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf1 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+            padding: 0.75rem 0;
+            margin-bottom: 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .page-header .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 0.75rem;
+        }
+        
+        .page-header h1 {
+            color: white;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn-group-separator {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 0.25rem;
+        }
+        
+        .btn-header-primary {
+            background: rgba(40, 167, 69, 0.95);
+            color: white;
+        }
+        
+        .btn-header-primary:hover {
+            background: rgb(40, 167, 69);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .btn-header {
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        
+        .btn-header-light {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+        }
+        
+        .btn-header-light:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .btn-header-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+        }
+        
+        .btn-header-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+            transform: translateY(-2px);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .content-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="main-container">
+            <div class="header-content">
+                <h1>🏷️ Add New Tag</h1>
+                <div class="header-actions">
+                    <!-- Navigation -->
+                    <a href="/tags" class="btn-header btn-header-light">← Tags</a>
+                    <a href="/notes" class="btn-header btn-header-light">📝 Notes</a>
+                    <a href="/tasks" class="btn-header btn-header-light">✓ Tasks</a>
+                    <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="content-section">
+            <div class="section-title">Tag Details</div>
+
+<form th:action="@{/tags/new}" th:object="${tag}" method="post" novalidate>
+    <div class="mb-3">
+        <label for="name" class="form-label">Tag Name *</label>
+        <input type="text" id="name" th:field="*{name}" class="form-control" required/>
+        <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Tag</button>
+</form>
+        </div>
+    </div>
+
+</body>
+</html>

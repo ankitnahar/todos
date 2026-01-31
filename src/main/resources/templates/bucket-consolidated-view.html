@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bucket Consolidated View</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf1 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+            padding: 0.75rem 0;
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .page-header .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .page-header h1 {
+            color: white;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn-group-separator {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 0.25rem;
+        }
+        
+        .btn-header {
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        
+        .btn-header-light {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+        }
+        
+        .btn-header-light:hover {
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .btn-header-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-header-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .btn-header-primary {
+            background: #ffc107;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .btn-header-primary:hover {
+            background: #ffca2c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+            color: #333;
+            text-decoration: none;
+        }
+        
+        .sub-note-item {
+            background: white;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            margin-bottom: 0;
+            transition: all 0.2s;
+        }
+
+        .sub-note-item.tracked-today {
+            background-color: transparent !important;
+            border-left: 4px solid #28a745 !important;
+        }
+        
+        .sub-note-item:hover {
+            background-color: #e9ecef !important;
+        }
+        
+        .sub-note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            background: transparent;
+        }
+        
+        .sub-note-header:hover {
+            background: rgba(0,0,0,0.02);
+        }
+        
+        .sub-note-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #2c3e50;
+            flex: 1;
+            margin: 0;
+        }
+        
+        .sub-note-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .parent-note-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            background: #e9ecef;
+            border-radius: 4px;
+            color: #495057;
+            margin-left: 0.5rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .parent-note-badge:hover {
+            background: #dee2e6;
+            color: #495057;
+            text-decoration: none;
+        }
+        
+        .sub-note-description {
+            margin-top: 0;
+            padding: 0.75rem 1rem;
+            background: #e3f2fd;
+            border-top: 2px solid #2196f3;
+            border-bottom: 1px solid #64b5f6;
+        }
+        
+        .sub-note-description .ql-container {
+            border: 2px solid #90caf9;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        .sub-note-description .ql-editor {
+            padding: 0.75rem;
+            min-height: 50px;
+        }
+        
+        .note-group {
+            background: transparent;
+            border-radius: 0;
+            padding: 0;
+            margin-bottom: 0;
+            box-shadow: none;
+        }
+        
+        .note-group-header {
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 0;
+            padding: 0.75rem 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-bottom: 3px solid #5a67d8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.15);
+        }
+        
+        .note-group-title {
+            font-size: 1rem;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        
+        .note-group-header .btn-outline-primary {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-color: white;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .note-group-header .btn-outline-primary:hover {
+            background-color: white;
+            border-color: white;
+            color: #5a67d8;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .note-group .sub-note-item {
+            margin-left: 0;
+            box-shadow: none;
+            border-left: none;
+            padding-left: 0;
+        }
+        
+        .sub-notes-container {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        .ql-editor {
+            padding: 0;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        .ql-editor p {
+            margin-bottom: 0.5rem;
+        }
+        
+        .expand-collapse-btn {
+            cursor: pointer;
+            color: #6c757d;
+            font-size: 1.2rem;
+            font-weight: normal;
+            user-select: none;
+            transition: transform 0.2s;
+        }
+        
+        .expand-collapse-btn:hover {
+            color: #495057;
+        }
+        
+        .description-hidden {
+            display: none;
+        }
+        
+        .linked-note-badge {
+            background-color: #17a2b8;
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            margin-left: 0.5rem;
+        }
+        
+        .bucket-selector {
+            font-size: 0.85rem;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+        }
+        
+        .bucket-selector:hover {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        
+        .sub-note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .sub-note-item:last-child .sub-note-header {
+            border-bottom: none;
+        }
+        
+        .sub-note-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .sub-note-toggle {
+            cursor: pointer;
+            color: #6c757d;
+            font-size: 1rem;
+            font-weight: normal;
+            user-select: none;
+            transition: transform 0.2s;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .track-subnote-btn {
+            font-size: 0.9em;
+            padding: 0.3rem 0.5rem;
+            margin-right: 0.3rem;
+            transition: all 0.2s ease;
+            color: #6c757d;
+            border-color: #dee2e6;
+        }
+
+        .track-subnote-btn:hover {
+            color: #495057;
+            border-color: #adb5bd;
+            background-color: rgba(108, 117, 125, 0.05);
+        }
+
+        .track-subnote-btn.active {
+            background-color: transparent;
+            border-color: transparent;
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .track-subnote-btn.active:hover {
+            background-color: transparent;
+            border-color: transparent;
+            color: #28a745;
+        }
+        
+        .bucket-count-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .bucket-count-box {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            border-left: 3px solid;
+            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,249,250,0.9) 100%);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+            transition: all 0.2s ease;
+        }
+        
+        .bucket-count-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .bucket-count-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.1rem;
+            opacity: 0.9;
+        }
+        
+        .bucket-count-number {
+            font-size: 1.1rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="main-container">
+            <div class="header-content">
+                <h1>🗂️ Bucket Consolidated View</h1>
+                <div class="header-actions">
+                    <!-- Navigation -->
+                    <a href="/notes" class="btn-header btn-header-light">📝 Notes</a>
+                    <a href="/tasks" class="btn-header btn-header-light">✓ Tasks</a>
+                    <a href="/tags" class="btn-header btn-header-light">🏷️ Tags</a>
+                    <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
+                    
+                    <div class="btn-group-separator"></div>
+                    
+                    <!-- View Toggle -->
+                    <a th:href="@{/buckets/view(groupByNote=${!groupByNote})}" 
+                       class="btn-header btn-header-primary"
+                       th:text="${groupByNote ? '📋 Flat View' : '📁 Group by Note'}">Toggle View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-container mt-4">
+        <!-- Filter Toggle Buttons -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; gap: 0.5rem; align-items: flex-start; flex-wrap: wrap;">
+                <button id="filterAllBtn" class="btn btn-outline-primary" onclick="filterNotes('all')" title="Show all notes" style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
+                    📋 All Notes
+                </button>
+                <button id="filterFavoriteBtn" class="btn btn-outline-primary" onclick="filterNotes('favorite')" title="Show only favorite notes" style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
+                    ⭐ Favorites Only
+                </button>
+                
+                <!-- Track Status Filter Multi-Select Dropdown -->
+                <div class="dropdown" style="position: relative;">
+                    <button class="btn btn-outline-info dropdown-toggle" 
+                            id="trackStatusFilterBtn"
+                            type="button" 
+                            onclick="toggleTrackStatusDropdown()" 
+                            style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
+                        📌 Track Status
+                    </button>
+                    <div id="trackStatusFilterDropdown" 
+                         class="dropdown-menu" 
+                         style="display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #dee2e6; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 200px; padding: 0.5rem;">
+                        <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                            <input type="radio" name="trackStatusFilter" value="untracked" onchange="updateTrackStatusFilter()" style="margin-right: 0.5rem;" checked>
+                            Untracked Only
+                        </label>
+                        <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                            <input type="radio" name="trackStatusFilter" value="tracked" onchange="updateTrackStatusFilter()" style="margin-right: 0.5rem;">
+                            Tracked Only
+                        </label>
+                        <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                            <input type="radio" name="trackStatusFilter" value="all" onchange="updateTrackStatusFilter()" style="margin-right: 0.5rem;">
+                            All Items
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Bucket Filter Multi-Select Dropdown -->
+                <div class="dropdown" style="position: relative;">
+                    <button class="btn btn-outline-secondary dropdown-toggle" 
+                            id="bucketFilterBtn"
+                            type="button" 
+                            onclick="toggleBucketDropdown()" 
+                            style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
+                        🪣 Select Buckets
+                    </button>
+                    <div id="bucketFilterDropdown" 
+                         class="dropdown-menu" 
+                         style="display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #dee2e6; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 200px; padding: 0.5rem;">
+                        <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                            <input type="checkbox" id="bucketSelectAll" onchange="toggleAllBuckets()" style="margin-right: 0.5rem;">
+                            <strong>All Buckets</strong>
+                        </label>
+                        <div style="border-top: 1px solid #dee2e6; margin: 0.25rem 0;"></div>
+                        <th:block th:each="bucket : ${buckets}">
+                            <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                                <input type="checkbox" class="bucket-checkbox" th:value="${bucket.id}" th:data-name="${bucket.name}" onchange="updateBucketFilter()" style="margin-right: 0.5rem;">
+                                <span th:text="${bucket.name}">Bucket</span>
+                            </label>
+                        </th:block>
+                    </div>
+                </div>
+            </div>
+            <button id="copyTitlesBtn" class="btn btn-info" onclick="copyAllVisibleTitles()" title="Copy all visible sub-note titles to clipboard" style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
+                📋 Copy Titles
+            </button>
+        </div>
+        
+        <!-- Bucket Count Summary -->
+        <div id="bucketCountSummary" class="bucket-count-summary"></div>
+        
+        <div th:each="bucket : ${buckets}" class="mb-4">
+            <th:block th:with="subNotes=${bucketSubNotes.get(bucket.id)}">
+                <fieldset th:if="${subNotes != null && !subNotes.isEmpty()}" 
+                          class="border rounded p-3 mb-4 bucket-fieldset" 
+                          th:attr="data-bucket-id=${bucket.id}"
+                          th:style="'border-color: ' + ${bucket.color} + ' !important; border-width: 2px !important;'">
+                    <legend class="float-none w-auto px-3 mb-0" 
+                            th:style="'font-size: 1rem; font-weight: 600; color: ' + ${bucket.color} + ';'" 
+                            th:text="${bucket.name} + ' (' + ${subNotes.size()} + ')'">Bucket Name</legend>
+                    
+                    <div class="mb-2" style="padding: 0 0.5rem;">
+                        <button class="btn btn-sm btn-outline-secondary expand-all-btn" th:onclick="'toggleAllInBucket(' + ${bucket.id} + ')'">
+                            <span th:id="'toggle-all-text-' + ${bucket.id}">Expand All</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Grouped by Note View -->
+                    <div th:if="${groupByNote}" class="sub-notes-container">
+                        <th:block th:with="noteSubNotesMap=${bucketNoteSubNotes.get(bucket.id)}">
+                            <div th:each="noteEntry : ${noteSubNotesMap}" class="note-group">
+                                <div class="note-group-header" th:data-isFavorite="${parentNotes.get(noteEntry.key).favorite}">
+                                    <span class="note-group-title">
+                                        📝 <span th:text="${parentNotes.get(noteEntry.key).name}">Note Name</span>
+                                    </span>
+                                    <a th:href="@{/notes/{id}(id=${noteEntry.key})}" 
+                                       class="btn btn-sm btn-outline-primary"
+                                       target="_blank"
+                                       rel="noopener noreferrer">View Note</a>
+                                </div>
+                                
+                                <div th:each="subNote, iterStat : ${noteEntry.value}" 
+                                     class="sub-note-item"
+                                     th:classappend="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
+                                     th:data-parentisfavorite="${subNote.note != null && subNote.note.favorite}"
+                                     th:data-subnote-id="${subNote.id}"
+                                     th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">
+                                    <div class="sub-note-header"
+                                         th:onclick="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null} ? 'toggleDescription(' + ${subNote.id} + ')' : ''">
+                                        <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
+                                            <span th:text="${subNote.header}">Sub-note header</span>
+                                            <span th:if="${subNote.linkedNoteId != null}" class="linked-note-badge">LINKED</span>
+                                        </h6>
+                                        <div class="sub-note-actions">
+                                            <button th:class="${'btn btn-sm track-subnote-btn ' + (subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
+                                                    th:attr="data-subnote-id=${subNote.id}"
+                                                    onclick="toggleTrackSubNote(this, event)"
+                                                    title="Track for Today">
+                                                <span th:if="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
+                                                <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                            </button>
+                                            <select class="form-select form-select-sm bucket-selector" 
+                                                    th:data-subnote-id="${subNote.id}"
+                                                    onchange="moveSubNoteToBucket(this)" 
+                                                    onclick="event.stopPropagation()"
+                                                    style="width: auto; display: inline-block; margin-right: 0.5rem;">
+                                                <option th:each="b : ${buckets}" 
+                                                        th:value="${b.id}" 
+                                                        th:text="${b.name}"
+                                                        th:selected="${b.id.equals(bucket.id)}"
+                                                        th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
+                                            </select>
+                                            <form th:action="@{/notes/{noteId}/subnote/convert/{subNoteId}(noteId=${subNote.note.id},subNoteId=${subNote.id})}" 
+                                                  method="post" style="display: inline;" 
+                                                  th:onsubmit="'return confirm(\'Convert this sub-note to a main note?\')'">
+                                                <button type="submit" class="btn btn-sm btn-success" 
+                                                        onclick="event.stopPropagation()" 
+                                                        title="Convert to Main Note"
+                                                        th:if="${subNote.linkedNoteId == null}">
+                                                    ⬆️ Convert
+                                                </button>
+                                            </form>
+                                            <span class="sub-note-toggle" 
+                                                  th:id="'toggle-' + ${subNote.id}"
+                                                  th:style="${(subNote.description == null || #strings.isEmpty(#strings.trim(subNote.description)) || subNote.description == '<p><br></p>') && subNote.linkedNoteId == null} ? 'visibility: hidden;' : ''">▼</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div th:if="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null}"
+                                         class="sub-note-description description-hidden"
+                                         th:id="'desc-' + ${subNote.id}">
+                                        <div th:id="'viewer-' + ${subNote.id}" style="min-height: 30px;"></div>
+                                        <textarea th:id="'content-' + ${subNote.id}" style="display: none;" th:text="${subNote.description}"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </th:block>
+                    </div>
+                    
+                    <!-- Flat View -->
+                    <div th:unless="${groupByNote}" class="sub-notes-container">
+                        <div th:each="subNote, iterStat : ${subNotes}" 
+                             class="sub-note-item"
+                             th:classappend="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
+                             th:data-parentisfavorite="${subNote.note != null && subNote.note.favorite}"
+                             th:data-subnote-id="${subNote.id}"
+                             th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">
+                            <div class="sub-note-header"
+                                 th:onclick="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null} ? 'toggleDescription(' + ${subNote.id} + ')' : ''">
+                                <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
+                                    <span th:text="${subNote.header}">Sub-note header</span>
+                                    <span th:if="${subNote.linkedNoteId != null}" class="linked-note-badge">LINKED</span>
+                                    <a th:if="${subNote.note != null && parentNotes.get(subNote.note.id) != null}" 
+                                       th:href="@{/notes/{id}(id=${subNote.note.id})}"
+                                       class="parent-note-badge"
+                                       onclick="event.stopPropagation()"
+                                       th:title="'View parent note: ' + ${parentNotes.get(subNote.note.id).name}">
+                                        📝 <span th:text="${parentNotes.get(subNote.note.id).name}">Parent Note</span>
+                                    </a>
+                                </h6>
+                                <div class="sub-note-actions">
+                                    <button th:class="${'btn btn-sm track-subnote-btn ' + (subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
+                                            th:attr="data-subnote-id=${subNote.id}"
+                                            onclick="toggleTrackSubNote(this, event)"
+                                            title="Track for Today">
+                                        <span th:if="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
+                                        <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                    </button>
+                                    <select class="form-select form-select-sm bucket-selector" 
+                                            th:data-subnote-id="${subNote.id}"
+                                            onchange="moveSubNoteToBucket(this)" 
+                                            onclick="event.stopPropagation()"
+                                            style="width: auto; display: inline-block; margin-right: 0.5rem;">
+                                        <option th:each="b : ${buckets}" 
+                                                th:value="${b.id}" 
+                                                th:text="${b.name}"
+                                                th:selected="${b.id.equals(bucket.id)}"
+                                                th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
+                                    </select>
+                                    <form th:action="@{/notes/{noteId}/subnote/convert/{subNoteId}(noteId=${subNote.note.id},subNoteId=${subNote.id})}" 
+                                          method="post" style="display: inline;" 
+                                          th:onsubmit="'return confirm(\'Convert this sub-note to a main note?\')'">
+                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                onclick="event.stopPropagation()" 
+                                                title="Convert to Main Note"
+                                                th:if="${subNote.linkedNoteId == null}">
+                                            ⬆️ Convert
+                                        </button>
+                                    </form>
+                                    <span class="sub-note-toggle" 
+                                          th:id="'toggle-' + ${subNote.id}"
+                                          th:style="${(subNote.description == null || #strings.isEmpty(#strings.trim(subNote.description)) || subNote.description == '<p><br></p>') && subNote.linkedNoteId == null} ? 'visibility: hidden;' : ''">▼</span>
+                                </div>
+                            </div>
+                            
+                            <div th:if="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null}"
+                                 class="sub-note-description description-hidden"
+                                 th:id="'desc-' + ${subNote.id}">
+                                <div th:id="'viewer-' + ${subNote.id}" style="min-height: 30px;"></div>
+                                <textarea th:id="'content-' + ${subNote.id}" style="display: none;" th:text="${subNote.description}"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+            </th:block>
+        </div>
+        
+        <div th:if="${buckets == null || buckets.isEmpty()}" class="alert alert-info">
+            No buckets found.
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        // Initialize Quill viewers for all descriptions
+        document.addEventListener('DOMContentLoaded', function() {
+            const textareas = document.querySelectorAll('[id^="content-"]');
+            textareas.forEach(textarea => {
+                const id = textarea.id.replace('content-', '');
+                const content = textarea.value;
+                
+                if (content && content.trim() !== '' && content !== '<p><br></p>') {
+                    const viewerDiv = document.getElementById('viewer-' + id);
+                    if (viewerDiv) {
+                        const quill = new Quill('#viewer-' + id, {
+                            theme: 'snow',
+                            readOnly: true,
+                            modules: {
+                                toolbar: false
+                            }
+                        });
+                        quill.root.innerHTML = content;
+                    }
+                }
+            });
+        });
+        
+        function moveSubNoteToBucket(selectElement) {
+            const subNoteId = selectElement.dataset.subnoteId;
+            const newBucketId = selectElement.value;
+            const originalIndex = selectElement.selectedIndex;
+            
+            if (!confirm('Move this sub-note to the selected bucket?')) {
+                selectElement.selectedIndex = Array.from(selectElement.options).findIndex(opt => 
+                    opt.hasAttribute('selected') && opt.getAttribute('selected') === 'selected'
+                );
+                return;
+            }
+            
+            fetch(`/notes/subnote/${subNoteId}/move-bucket?bucketId=${newBucketId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show updated bucket groupings
+                    location.reload();
+                } else {
+                    alert('Failed to move sub-note: ' + (data.message || 'Unknown error'));
+                    selectElement.selectedIndex = originalIndex;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while moving the sub-note');
+                selectElement.selectedIndex = originalIndex;
+            });
+        }
+        
+        function toggleDescription(subNoteId) {
+            const descDiv = document.getElementById('desc-' + subNoteId);
+            const toggleBtn = document.getElementById('toggle-' + subNoteId);
+            
+            if (descDiv.classList.contains('description-hidden')) {
+                descDiv.classList.remove('description-hidden');
+                toggleBtn.textContent = '▲';
+            } else {
+                descDiv.classList.add('description-hidden');
+                toggleBtn.textContent = '▼';
+            }
+        }
+        
+        function toggleAllInBucket(bucketId) {
+            const fieldset = document.querySelector('[id*="' + bucketId + '"]').closest('fieldset');
+            const allDescriptions = fieldset.querySelectorAll('.sub-note-description');
+            const allToggles = fieldset.querySelectorAll('[id^="toggle-"]:not([id^="toggle-all"])');
+            const toggleAllText = document.getElementById('toggle-all-text-' + bucketId);
+            
+            const anyVisible = Array.from(allDescriptions).some(desc => !desc.classList.contains('description-hidden'));
+            
+            if (anyVisible) {
+                // Collapse all
+                allDescriptions.forEach(desc => desc.classList.add('description-hidden'));
+                allToggles.forEach(toggle => toggle.textContent = '▼');
+                toggleAllText.textContent = '▼ Expand All';
+            } else {
+                // Expand all
+                allDescriptions.forEach(desc => desc.classList.remove('description-hidden'));
+                allToggles.forEach(toggle => toggle.textContent = '▲');
+                toggleAllText.textContent = '▲ Collapse All';
+            }
+        }
+
+        function updateBucketCountSummary() {
+            const summaryContainer = document.getElementById('bucketCountSummary');
+            if (!summaryContainer) return;
+            
+            summaryContainer.innerHTML = '';
+            
+            // Get selected buckets
+            const selectedBuckets = Array.from(document.querySelectorAll('.bucket-checkbox:checked'));
+            
+            if (selectedBuckets.length === 0) {
+                summaryContainer.style.display = 'none';
+                return;
+            }
+            
+            summaryContainer.style.display = 'flex';
+            
+            selectedBuckets.forEach(checkbox => {
+                const bucketId = checkbox.value;
+                const bucketName = checkbox.getAttribute('data-name');
+                const fieldset = document.querySelector(`fieldset[data-bucket-id="${bucketId}"]`);
+                
+                if (!fieldset) return;
+                
+                // Count visible sub-notes in this bucket (only count items that are not display:none)
+                const subNoteItems = fieldset.querySelectorAll('.sub-note-item');
+                const visibleCount = Array.from(subNoteItems).filter(item => {
+                    return item.style.display !== 'none' && 
+                           !item.closest('.note-group[style*="display: none"]') &&
+                           !item.closest('fieldset[style*="display: none"]');
+                }).length;
+                
+                // Get bucket color from fieldset style or extract from border-color
+                let bucketColor = fieldset.style.borderColor;
+                if (!bucketColor || bucketColor === '') {
+                    // Try to get from computed style
+                    const computedStyle = window.getComputedStyle(fieldset);
+                    bucketColor = computedStyle.borderColor;
+                }
+                if (!bucketColor || bucketColor === '' || bucketColor === 'initial') {
+                    bucketColor = '#667eea'; // fallback
+                }
+                
+                const countBox = document.createElement('div');
+                countBox.className = 'bucket-count-box';
+                countBox.style.borderLeftColor = bucketColor;
+                countBox.innerHTML = `
+                    <div class="bucket-count-name" style="color: ${bucketColor}">${bucketName}</div>
+                    <div class="bucket-count-number" style="color: ${bucketColor}">${visibleCount}</div>
+                `;
+                
+                summaryContainer.appendChild(countBox);
+            });
+        }
+        
+        function toggleTrackSubNote(button, event) {
+            event.stopPropagation();
+            const subNoteId = button.getAttribute('data-subnote-id');
+            const isCurrentlyTracked = button.classList.contains('active');
+            const endpoint = isCurrentlyTracked ? 'untrack-today' : 'track-today';
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+
+            button.disabled = true;
+
+            fetch(`/api/notes/subnote/${subNoteId}/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken && csrfHeader ? { [csrfHeader]: csrfToken } : {})
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Toggle the visual state and update button text
+                    const subNoteItem = button.closest('.sub-note-item');
+                    const isUntrackedFilter = document.getElementById('untrackedOnly')?.checked;
+                    
+                    if (isCurrentlyTracked) {
+                        button.classList.remove('active');
+                        subNoteItem.classList.remove('tracked-today');
+                        button.innerHTML = '📌';
+                    } else {
+                        button.classList.add('active');
+                        subNoteItem.classList.add('tracked-today');
+                        button.innerHTML = '✅';
+                        
+                        // If untracked filter is active, hide the item immediately
+                        if (isUntrackedFilter) {
+                            subNoteItem.style.display = 'none';
+                            
+                            // Update parent note count if in grouped view
+                            const noteGroup = subNoteItem.closest('.note-group');
+                            if (noteGroup) {
+                                const visibleSubNotes = Array.from(noteGroup.querySelectorAll('.sub-note-item')).filter(item => item.style.display !== 'none');
+                                if (visibleSubNotes.length === 0) {
+                                    noteGroup.style.display = 'none';
+                                }
+                            }
+                            
+                            // Update bucket legend count
+                            const fieldset = subNoteItem.closest('.bucket-fieldset');
+                            if (fieldset) {
+                                const legend = fieldset.querySelector('legend');
+                                const allSubNotes = fieldset.querySelectorAll('.sub-note-item');
+                                const visibleSubNotes = Array.from(allSubNotes).filter(item => item.style.display !== 'none');
+                                const bucketName = legend.textContent.replace(/\s*\(\d+\)\s*$/, '').trim();
+                                legend.textContent = `${bucketName} (${visibleSubNotes.length})`;
+                                
+                                // Hide fieldset if no visible sub-notes
+                                if (visibleSubNotes.length === 0) {
+                                    fieldset.style.display = 'none';
+                                }
+                            }
+                            
+                            // Update bucket count summary
+                            updateBucketCountSummary();
+                        }
+                    }
+                    button.disabled = false;
+                } else {
+                    alert('Failed to update tracking status');
+                    button.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating tracking status');
+                button.disabled = false;
+            });
+        }
+        
+        // Copy all visible sub-note titles to clipboard with hierarchical format including sections
+        function copyAllVisibleTitles() {
+            const titles = [];
+            
+            // Get selected buckets
+            const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
+            const selectedBuckets = Array.from(bucketCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            // Get all fieldsets (bucket sections)
+            const fieldsets = document.querySelectorAll('fieldset.bucket-fieldset');
+            
+            fieldsets.forEach(fieldset => {
+                // Skip if bucket is not selected
+                const bucketId = fieldset.getAttribute('data-bucket-id');
+                if (selectedBuckets.length > 0 && !selectedBuckets.includes(bucketId)) {
+                    return;
+                }
+                
+                // Skip if fieldset is hidden
+                if (fieldset.style.display === 'none') {
+                    return;
+                }
+                
+                // Get bucket/section name from legend
+                const legend = fieldset.querySelector('legend');
+                if (!legend) return;
+                
+                let bucketName = legend.textContent.trim();
+                // Remove the count at the end (e.g., " (5)")
+                bucketName = bucketName.replace(/\s*\(\d+\)\s*$/, '').trim();
+                
+                const subNotesContainer = fieldset.querySelector('.sub-notes-container');
+                if (!subNotesContainer) return;
+                
+                // Get all sub-note items in this bucket (works for both grouped and flat view)
+                const subNoteItems = subNotesContainer.querySelectorAll('.sub-note-item');
+                const groupedByParent = {};
+                
+                subNoteItems.forEach(item => {
+                    // Skip hidden items (due to favorites filter)
+                    if (item.style.display === 'none') {
+                        return;
+                    }
+                    
+                    // Check if parent note itself is hidden (favorites filter)
+                    const parentIsFavorite = item.getAttribute('data-parentisfavorite');
+                    if (parentIsFavorite === 'false') {
+                        return; // Skip if filtered out
+                    }
+                    
+                    const headerElement = item.querySelector('h6');
+                    if (headerElement) {
+                        // Extract just the sub-note header (first span)
+                        const headerSpan = headerElement.querySelector('span');
+                        let text = headerSpan ? headerSpan.textContent.trim() : headerElement.textContent.trim();
+                        text = text.replace(/\s*LINKED\s*/g, '').trim();
+                        
+                        // Get parent note name - works for both views
+                        let parentName = '';
+                        
+                        // Try to find parent note name from parent-note-badge (flat view)
+                        const parentNoteBadge = headerElement.querySelector('.parent-note-badge');
+                        if (parentNoteBadge) {
+                            const badgeText = parentNoteBadge.textContent.trim();
+                            parentName = badgeText.replace(/^📝\s*/, '').trim();
+                        } else {
+                            // For grouped view, find the parent note name from note-group-header above
+                            const noteGroup = item.closest('.note-group');
+                            if (noteGroup) {
+                                const noteGroupHeader = noteGroup.querySelector('.note-group-header');
+                                if (noteGroupHeader) {
+                                    const noteGroupTitle = noteGroupHeader.querySelector('.note-group-title');
+                                    let parentNoteName = noteGroupTitle ? noteGroupTitle.textContent.trim() : noteGroupHeader.textContent.trim();
+                                    parentName = parentNoteName.replace(/^📝\s*/, '').trim();
+                                }
+                            }
+                        }
+                        
+                        // If no parent note found, skip this item
+                        if (!parentName) {
+                            return;
+                        }
+                        
+                        if (!groupedByParent[parentName]) {
+                            groupedByParent[parentName] = [];
+                        }
+                        groupedByParent[parentName].push(text);
+                    }
+                });
+                
+                // Add to main titles if there are items in this bucket
+                const parentNames = Object.keys(groupedByParent);
+                if (parentNames.length > 0) {
+                    titles.push(bucketName);
+                    
+                    // Format grouped output
+                    Object.entries(groupedByParent).forEach(([parentName, subNotes]) => {
+                        titles.push('  ' + parentName);
+                        subNotes.forEach(subNote => {
+                            titles.push('    ' + subNote);
+                        });
+                    });
+                    
+                    titles.push(''); // Empty line between sections
+                }
+            });
+            
+            if (titles.length === 0) {
+                alert('No visible titles to copy');
+                return;
+            }
+            
+            // Remove trailing empty lines
+            while (titles[titles.length - 1] === '') {
+                titles.pop();
+            }
+            
+            // Join titles with newlines
+            const textToCopy = titles.join('\n');
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                // Show feedback
+                const btn = document.getElementById('copyTitlesBtn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                btn.style.backgroundColor = '#28a745';
+                btn.style.color = 'white';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.backgroundColor = '';
+                    btn.style.color = '';
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy titles: ' + err);
+            });
+        }
+        
+        function filterNotes(filterType) {
+            const filterAllBtn = document.getElementById('filterAllBtn');
+            const filterFavoriteBtn = document.getElementById('filterFavoriteBtn');
+            
+            // Update button states
+            if (filterType === 'all') {
+                filterAllBtn.classList.add('active');
+                filterFavoriteBtn.classList.remove('active');
+                filterAllBtn.style.backgroundColor = '#667eea';
+                filterAllBtn.style.color = 'white';
+                filterFavoriteBtn.style.backgroundColor = 'transparent';
+                filterFavoriteBtn.style.color = '#667eea';
+            } else {
+                filterFavoriteBtn.classList.add('active');
+                filterAllBtn.classList.remove('active');
+                filterFavoriteBtn.style.backgroundColor = '#667eea';
+                filterFavoriteBtn.style.color = 'white';
+                filterAllBtn.style.backgroundColor = 'transparent';
+                filterAllBtn.style.color = '#667eea';
+            }
+            
+            // Re-apply all filters
+            applyTrackStatusFilter();
+            
+            // Store preference in localStorage
+            localStorage.setItem('consolidatedViewFilter', filterType);
+        }
+        
+        // Toggle track status filter dropdown
+        function toggleTrackStatusDropdown() {
+            const dropdown = document.getElementById('trackStatusFilterDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            
+            // Close when clicking outside
+            document.addEventListener('click', function(event) {
+                const btn = document.getElementById('trackStatusFilterBtn');
+                const menu = document.getElementById('trackStatusFilterDropdown');
+                if (!btn.contains(event.target) && !menu.contains(event.target)) {
+                    menu.style.display = 'none';
+                }
+            });
+        }
+        
+        // Update track status filter when selection changes
+        function updateTrackStatusFilter() {
+            const selectedStatus = document.querySelector('input[name="trackStatusFilter"]:checked').value;
+            
+            // Update button text
+            const btn = document.getElementById('trackStatusFilterBtn');
+            if (selectedStatus === 'untracked') {
+                btn.textContent = '📌 Untracked';
+            } else if (selectedStatus === 'tracked') {
+                btn.textContent = '✅ Tracked';
+            } else {
+                btn.textContent = '📌 Track Status';
+            }
+            
+            applyTrackStatusFilter();
+            updateBucketCountSummary(); // Call after filter to ensure counts are updated
+            localStorage.setItem('consolidatedViewTrackStatusFilter', selectedStatus);
+        }
+        
+        // Apply track status filter
+        function applyTrackStatusFilter() {
+            const selectedStatus = document.querySelector('input[name="trackStatusFilter"]:checked').value;
+            const subNoteItems = document.querySelectorAll('.sub-note-item');
+            const bucketSections = document.querySelectorAll('fieldset.bucket-fieldset');
+            
+            subNoteItems.forEach(item => {
+                // Check track status
+                const isTrackedToday = item.classList.contains('tracked-today');
+                let trackStatusMatches = true;
+                
+                if (selectedStatus === 'tracked') {
+                    trackStatusMatches = isTrackedToday;
+                } else if (selectedStatus === 'untracked') {
+                    trackStatusMatches = !isTrackedToday;
+                }
+                
+                // Check favorites filter
+                const filterType = localStorage.getItem('consolidatedViewFilter') || 'all';
+                const parentIsFavorite = item.dataset.parentisfavorite === 'true' || item.dataset.parentisfavorite === true;
+                let favoriteFilterMatches = filterType === 'all' || (filterType === 'favorite' && parentIsFavorite);
+                
+                // Check bucket filter
+                const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
+                const selectedBuckets = Array.from(bucketCheckboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value);
+                const itemBucketId = item.closest('fieldset.bucket-fieldset')?.getAttribute('data-bucket-id');
+                let bucketFilterMatches = selectedBuckets.length === 0 || selectedBuckets.includes(itemBucketId);
+                
+                // Show item only if all filters match
+                item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches) ? 'block' : 'none';
+            });
+            
+            // Update bucket section visibility
+            bucketSections.forEach(section => {
+                const visibleItems = section.querySelectorAll('.sub-note-item[style*="display: block"]');
+                const legend = section.querySelector('legend');
+                
+                if (visibleItems.length === 0) {
+                    section.style.display = 'none';
+                } else {
+                    section.style.display = 'block';
+                    // Update legend count
+                    if (legend) {
+                        const legendText = legend.textContent;
+                        const bucketName = legendText.substring(0, legendText.lastIndexOf('('));
+                        legend.textContent = bucketName.trim() + ' (' + visibleItems.length + ')';
+                    }
+                }
+            });
+        }
+        
+        // Toggle bucket filter dropdown
+        function toggleBucketDropdown() {
+            const dropdown = document.getElementById('bucketFilterDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            
+            // Close when clicking outside
+            document.addEventListener('click', function(event) {
+                const btn = document.getElementById('bucketFilterBtn');
+                const menu = document.getElementById('bucketFilterDropdown');
+                if (!btn.contains(event.target) && !menu.contains(event.target)) {
+                    menu.style.display = 'none';
+                }
+            });
+        }
+        
+        // Toggle all buckets checkbox
+        function toggleAllBuckets() {
+            const selectAllCheckbox = document.getElementById('bucketSelectAll');
+            const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
+            
+            bucketCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            
+            updateBucketFilter();
+        }
+        
+        // Update bucket filter when selection changes
+        function updateBucketFilter() {
+            const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
+            const selectedBuckets = Array.from(bucketCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            const selectAllCheckbox = document.getElementById('bucketSelectAll');
+            selectAllCheckbox.checked = selectedBuckets.length === bucketCheckboxes.length;
+            
+            // Update button text
+            const btn = document.getElementById('bucketFilterBtn');
+            if (selectedBuckets.length === 0 || selectedBuckets.length === bucketCheckboxes.length) {
+                btn.textContent = '🪣 Select Buckets';
+            } else if (selectedBuckets.length === 1) {
+                const bucketName = document.querySelector(`.bucket-checkbox[value="${selectedBuckets[0]}"]`).getAttribute('data-name');
+                btn.textContent = '🪣 ' + bucketName;
+            } else {
+                btn.textContent = '🪣 ' + selectedBuckets.length + ' Buckets';
+            }
+            
+            applyBucketFilter();
+            updateBucketCountSummary(); // Call after applyBucketFilter to ensure visibility is updated
+            localStorage.setItem('consolidatedViewBucketFilter', JSON.stringify(selectedBuckets));
+        }
+        
+        // Filter by selected bucket(s)
+        function filterByBucket() {
+            applyBucketFilter();
+        }
+        
+        // Apply bucket filter
+        function applyBucketFilter() {
+            const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
+            const selectedBuckets = Array.from(bucketCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            const subNoteItems = document.querySelectorAll('.sub-note-item');
+            const bucketSections = document.querySelectorAll('fieldset.bucket-fieldset');
+            
+            // Re-apply all filters for each item
+            subNoteItems.forEach(item => {
+                // Check track status
+                const selectedStatus = document.querySelector('input[name="trackStatusFilter"]:checked').value;
+                const isTrackedToday = item.classList.contains('tracked-today');
+                let trackStatusMatches = true;
+                
+                if (selectedStatus === 'tracked') {
+                    trackStatusMatches = isTrackedToday;
+                } else if (selectedStatus === 'untracked') {
+                    trackStatusMatches = !isTrackedToday;
+                }
+                
+                // Check favorites filter
+                const filterType = localStorage.getItem('consolidatedViewFilter') || 'all';
+                const parentIsFavorite = item.dataset.parentisfavorite === 'true' || item.dataset.parentisfavorite === true;
+                let favoriteFilterMatches = filterType === 'all' || (filterType === 'favorite' && parentIsFavorite);
+                
+                // Check bucket filter
+                const itemBucketId = item.closest('fieldset.bucket-fieldset')?.getAttribute('data-bucket-id');
+                let bucketFilterMatches = selectedBuckets.length === 0 || selectedBuckets.includes(itemBucketId);
+                
+                // Show item only if all filters match
+                item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches) ? 'block' : 'none';
+            });
+            
+            // Update bucket section visibility
+            bucketSections.forEach(section => {
+                const visibleItems = section.querySelectorAll('.sub-note-item[style*="display: block"]');
+                const legend = section.querySelector('legend');
+                
+                if (visibleItems.length === 0) {
+                    section.style.display = 'none';
+                } else {
+                    section.style.display = 'block';
+                    // Update legend count
+                    if (legend) {
+                        const legendText = legend.textContent;
+                        const bucketName = legendText.substring(0, legendText.lastIndexOf('('));
+                        legend.textContent = bucketName.trim() + ' (' + visibleItems.length + ')';
+                    }
+                }
+            });
+        }
+        
+        // Initialize filter state on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateBucketCountSummary();
+            const savedFilter = localStorage.getItem('consolidatedViewFilter') || 'all';
+            const savedBucketFilter = localStorage.getItem('consolidatedViewBucketFilter');
+            const savedTrackStatusFilter = localStorage.getItem('consolidatedViewTrackStatusFilter') || 'untracked';
+            
+            // Set track status filter
+            const trackStatusRadio = document.querySelector(`input[name="trackStatusFilter"][value="${savedTrackStatusFilter}"]`);
+            if (trackStatusRadio) {
+                trackStatusRadio.checked = true;
+                updateTrackStatusFilter();
+            }
+            
+            if (savedBucketFilter) {
+                try {
+                    const selectedBuckets = JSON.parse(savedBucketFilter);
+                    const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
+                    
+                    bucketCheckboxes.forEach(checkbox => {
+                        checkbox.checked = selectedBuckets.includes(checkbox.value);
+                    });
+                    
+                    updateBucketFilter();
+                } catch (e) {
+                    // If localStorage is corrupted, select all buckets
+                    document.getElementById('bucketSelectAll').checked = true;
+                    toggleAllBuckets();
+                }
+            } else {
+                // Default: select all buckets
+                document.getElementById('bucketSelectAll').checked = true;
+                toggleAllBuckets();
+            }
+            
+            filterNotes(savedFilter);
+        });
+        
+        // ESC key navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                window.location.href = '/notes';
+            }
+        });
+    </script>
+</body>
+</html>

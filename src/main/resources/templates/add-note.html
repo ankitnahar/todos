@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Note</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf1 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+            padding: 0.75rem 0;
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .page-header .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .page-header h1 {
+            color: white;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-header {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+            border: none;
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+        }
+        
+        .btn-header:hover {
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        /* Increase font size in Quill editor */
+        .ql-editor {
+            font-size: 16px !important;
+            line-height: 1.5 !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            min-height: 120px !important;
+            max-height: 370px !important;
+            overflow-y: auto !important;
+        }
+        
+        .ql-editor p {
+            margin-bottom: 0.25rem !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Auto-resize container */
+        .ql-container {
+            height: auto !important;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        
+        .ql-toolbar {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+        }
+        
+        #details-editor {
+            background: white;
+            border-radius: 0 0 4px 4px;
+        }
+
+        .form-control:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .card {
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .tag-suggestion {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .tag-suggestion:hover {
+            background-color: #007bff !important;
+            color: white !important;
+            transform: translateY(-1px);
+        }
+        .tag-search-container {
+            position: relative;
+        }
+        .tag-list {
+            background-color: #f8f9fa;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .tag-list.show {
+            display: block !important;
+        }
+        #selectedTagsContainer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.25rem;
+        }
+        .selected-tag {
+            background-color: #007bff;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .selected-tag .remove {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .tag-item {
+            padding: 6px 12px;
+            margin: 2px 0;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        .tag-item:hover {
+            background-color: #e9ecef;
+        }
+        .tag-item.hidden {
+            display: none;
+        }
+        .tag-item .form-check-input {
+            margin-top: 0;
+            margin-right: 8px;
+            position: static;
+        }
+        .tag-item .form-check-label {
+            margin-bottom: 0;
+            cursor: pointer;
+            flex: 1;
+        }
+        .form-check-input:checked + .form-check-label {
+            font-weight: 600;
+            color: #007bff;
+        }
+        
+        /* Sub-notes styling */
+        .sub-notes-section {
+            display: none;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            background: #f8f9fa;
+        }
+        
+        .sub-notes-section.show {
+            display: block;
+        }
+        
+        .sub-note-item {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 0.85rem;
+            padding-left: 3rem;
+            margin-bottom: 1rem;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+        }
+        
+        .sub-note-item .remove-sub-note {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            cursor: pointer;
+            color: #dc3545;
+            font-size: 1.5rem;
+            line-height: 1;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        
+        .sub-note-item .remove-sub-note:hover {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .add-sub-note-btn {
+            width: 100%;
+            border: 2px dashed #6c757d;
+            background: white;
+            padding: 0.75rem;
+            border-radius: 6px;
+            color: #6c757d;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .add-sub-note-btn:hover {
+            border-color: #007bff;
+            color: #007bff;
+            background: #f8f9fa;
+        }
+        
+        .toggle-description-btn {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            margin-left: 0.5rem;
+            border: 1px solid #6c757d;
+            background: white;
+            color: #6c757d;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .toggle-description-btn:hover {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .sub-note-description-section {
+            display: none;
+            margin-top: 0.5rem;
+        }
+        
+        .sub-note-description-section.show {
+            display: block;
+        }
+        
+        /* Ensure Quill editors in sub-notes display properly */
+        .sub-note-description-section .ql-container {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        
+        .sub-note-description-section .ql-editor {
+            background: white;
+            color: #333;
+        }
+        
+        .sub-note-description-section .ql-toolbar {
+            border: 1px solid #dee2e6;
+            border-bottom: none;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="main-container">
+            <div class="header-content">
+                <h1>📝 Add New Note</h1>
+                <a href="/notes" class="btn-header">← Back to Notes</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="card">
+            <div class="card-body">
+                <form th:action="@{/notes/add}" th:object="${note}" method="post">
+                    <!-- Hidden inputs for bucket data -->
+                    <div th:each="bucket : ${allBuckets}" style="display: none;">
+                        <input type="hidden" class="bucket-data"
+                               th:attr="data-id=${bucket.id}, data-name=${bucket.name}, data-is-default=${bucket.isDefault}, data-color=${bucket.color}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="name">Name *</label>
+                        <input type="text" class="form-control" id="name" th:field="*{name}" required>
+                        <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="d-flex align-items-center gap-3" style="gap: 2rem;">
+                            <div class="form-check mb-0">
+                                <input type="checkbox" class="form-check-input" id="favorite" th:field="*{favorite}">
+                                <label class="form-check-label" for="favorite">⭐ Mark as Favorite</label>
+                            </div>
+                            <div class="form-check mb-0">
+                                <input type="checkbox" class="form-check-input" id="nested" name="nested" onchange="toggleNestedMode()">
+                                <label class="form-check-label" for="nested">📑 Enable Nested Sub-Notes</label>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted d-block mt-1">Nested mode allows multiple sub-sections with headers and descriptions</small>
+                    </div>
+
+                    <!-- Normal Details (shown when nested is disabled) -->
+                    <div class="form-group" id="normalDetailsSection">
+                        <label for="details">Details</label>
+                        <div id="details-editor" style="min-height: 150px; max-height: 400px;"></div>
+                        <textarea class="form-control" id="details" name="details" style="display: none;"></textarea>
+                    </div>
+
+                    <!-- Sub-notes Section (shown when nested is enabled) -->
+                    <div class="sub-notes-section" id="subNotesSection">
+                        <h5 class="mb-3">Sub-Notes</h5>
+                        <div id="bucketsContainer">
+                            <!-- Bucket sections will be rendered here dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tagSearch">Tags</label>
+                        <div class="tag-search-container">
+                            <input type="text" id="tagSearch" class="form-control" placeholder="Click to search and select tags..." autocomplete="off">
+                            <div id="tagList" class="tag-list border rounded p-2" style="max-height: 200px; overflow-y: auto; display: none;">
+                                <div th:each="tag : ${allTags}" class="tag-item form-check" th:attr="data-tag-name=${tag.name}">
+                                    <input class="form-check-input tag-checkbox" type="checkbox" th:id="'tag_' + ${tag.id}" th:value="${tag.id}" name="tagIds">
+                                    <label class="form-check-label" th:for="'tag_' + ${tag.id}" th:text="${tag.name}"></label>
+                                </div>
+                            </div>
+                            <div id="selectedTags" class="mt-2" style="display: none;">
+                                <small class="text-muted">Selected tags:</small>
+                                <div id="selectedTagsContainer"></div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Click the input field to search and select tags.</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Note</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        let subNoteCount = 0;
+        let subNoteEditors = {};
+        let defaultBucketId = null;
+        let quill = null; // Will be initialized later
+        let hasUnsavedChanges = false;
+        let nameInput = null;
+        
+        // Build available buckets options for dropdown
+        let allBucketsOptions = '';
+        let allBuckets = [];
+        
+        // Function to initialize buckets from hidden bucket-data inputs
+        function initializeBuckets() {
+            allBuckets = [];
+            allBucketsOptions = '';
+            defaultBucketId = null;
+            
+            const bucketInputs = document.querySelectorAll('.bucket-data');
+            console.log('Found bucket-data inputs:', bucketInputs.length);
+            
+            bucketInputs.forEach(input => {
+                const bucketId = input.dataset.id;
+                const bucketName = input.dataset.name;
+                const isDefault = input.dataset.isDefault === 'true';
+                
+                console.log('Processing bucket:', {id: bucketId, name: bucketName, isDefault: isDefault});
+                
+                allBuckets.push({
+                    id: bucketId,
+                    name: bucketName,
+                    isDefault: isDefault
+                });
+                
+                allBucketsOptions += `<option value="${bucketId}">${bucketName}</option>`;
+                if (isDefault) {
+                    defaultBucketId = bucketId;
+                }
+            });
+            
+            console.log('Final allBuckets from bucket-data inputs:', allBuckets);
+            console.log('defaultBucketId after processing:', defaultBucketId);
+            
+            // Set first bucket as default if no default found
+            if (!defaultBucketId && allBuckets && allBuckets.length > 0) {
+                defaultBucketId = allBuckets[0].id;
+                console.log('Set defaultBucketId to first bucket:', defaultBucketId);
+            }
+        }
+        
+        // Initialize buckets immediately
+        initializeBuckets();
+        
+        // Global checkForChanges function
+        function checkForChanges() {
+            if (!quill || !nameInput) return; // Safety check
+            const selectedTags = document.querySelectorAll('.tag-checkbox:checked');
+            const editorContent = quill.root.innerHTML || '';
+            const nestedCheckbox = document.getElementById('nested');
+            const hasSubNotes = Object.keys(subNoteEditors).length > 0;
+            
+            hasUnsavedChanges = (nameInput.value.trim() !== '' || 
+                               editorContent.trim() !== '<p><br></p>' && editorContent.trim() !== '' || 
+                               selectedTags.length > 0 ||
+                               (nestedCheckbox.checked && hasSubNotes));
+        }
+        
+        // Render bucket sections with add buttons
+        function renderBucketSections() {
+            const bucketsContainer = document.getElementById('bucketsContainer');
+            if (!bucketsContainer) return;
+            
+            bucketsContainer.innerHTML = '';
+            
+            // Log for debugging
+            console.log('renderBucketSections - allBuckets:', allBuckets);
+            
+            if (!allBuckets || allBuckets.length === 0) {
+                bucketsContainer.innerHTML = '<p class="text-muted">No buckets available</p>';
+                return;
+            }
+            
+            allBuckets.forEach(bucket => {
+                const fieldset = document.createElement('fieldset');
+                fieldset.className = 'border rounded p-3 mb-3';
+                fieldset.style.cssText = `border-color: #667eea !important; border-width: 2px !important;`;
+                fieldset.id = `bucket-section-${bucket.id}`;
+                
+                const legend = document.createElement('legend');
+                legend.className = 'float-none w-auto px-3 mb-0';
+                legend.style.cssText = `font-size: 1rem; font-weight: 600; color: #667eea;`;
+                legend.id = `bucket-legend-${bucket.id}`;
+                legend.textContent = bucket.name + ' (0)';
+                
+                const subNotesList = document.createElement('div');
+                subNotesList.id = `subNotesList-${bucket.id}`;
+                subNotesList.className = 'sub-notes-list';
+                
+                const addButton = document.createElement('button');
+                addButton.type = 'button';
+                addButton.className = 'btn btn-sm btn-info mt-2';
+                addButton.textContent = '+ Add Sub-Note';
+                addButton.onclick = () => addSubNoteToTBucket(null, bucket.id);
+                
+                fieldset.appendChild(legend);
+                fieldset.appendChild(subNotesList);
+                fieldset.appendChild(addButton);
+                bucketsContainer.appendChild(fieldset);
+            });
+        }
+        
+        // Update bucket counts
+        function updateBucketCounts() {
+            if (!allBuckets || allBuckets.length === 0) return;
+            
+            allBuckets.forEach(bucket => {
+                const subNotesList = document.getElementById(`subNotesList-${bucket.id}`);
+                const legend = document.getElementById(`bucket-legend-${bucket.id}`);
+                
+                if (subNotesList && legend) {
+                    const count = subNotesList.querySelectorAll('.sub-note-item').length;
+                    const baseName = bucket.name.replace(/\s*\(\d+\)\s*$/, '');
+                    legend.textContent = `${baseName} (${count})`;
+                }
+            });
+        }
+
+        function toggleNestedMode() {
+            const nestedCheckbox = document.getElementById('nested');
+            const normalDetailsSection = document.getElementById('normalDetailsSection');
+            const subNotesSection = document.getElementById('subNotesSection');
+            const nameInput = document.getElementById('name');
+            
+            if (nestedCheckbox.checked) {
+                // Converting from normal to nested mode
+                // First ensure buckets are initialized
+                initializeBuckets();
+                
+                console.log('Nested mode enabled');
+                console.log('allBuckets after init:', allBuckets);
+                console.log('defaultBucketId:', defaultBucketId);
+                console.log('subNoteCount:', subNoteCount);
+                
+                // Show the sub-notes section
+                normalDetailsSection.style.display = 'none';
+                subNotesSection.classList.add('show');
+                subNotesSection.style.display = 'block';
+                
+                // Render bucket sections
+                renderBucketSections();
+                console.log('Bucket sections rendered');
+                
+                // Add first sub-note by default when enabling nested mode
+                if (subNoteCount === 0) {
+                    console.log('Adding first sub-note with defaultBucketId:', defaultBucketId);
+                    
+                    // Get current details content if any (NOT the name)
+                    const currentDetails = quill && quill.root ? quill.root.innerHTML : '';
+                    const hasContent = currentDetails && currentDetails.trim() !== '<p><br></p>' && currentDetails.trim() !== '';
+                    
+                    console.log('Current content:', {hasDetails: hasContent});
+                    
+                    // Create first sub-note with default bucket, copying parent note DETAILS only
+                    if (hasContent) {
+                        // If there's content, copy it to first sub-note
+                        console.log('Adding sub-note with details');
+                        addSubNoteWithData('Section 1', currentDetails, defaultBucketId);
+                        // Clear only the details, KEEP the name field
+                        quill.setContents([]);
+                    } else {
+                        // Otherwise add empty sub-note
+                        console.log('Adding empty sub-note');
+                        addSubNoteToTBucket(null, defaultBucketId);
+                    }
+                    
+                    // Force a re-layout to ensure Quill editors render properly
+                    setTimeout(function() {
+                        console.log('Applying layout fixes');
+                        const quillContainers = document.querySelectorAll('.ql-container');
+                        quillContainers.forEach(container => {
+                            if (container.offsetHeight === 0) {
+                                container.style.minHeight = '100px';
+                            }
+                        });
+                        updateBucketCounts();
+                    }, 100);
+                }
+            } else {
+                // Converting from nested back to normal mode
+                console.log('Converting nested to normal mode');
+                
+                // Copy first sub-note DETAILS back to parent details (not header to name)
+                let firstSubNoteFound = false;
+                for (let i = 0; i < subNoteCount; i++) {
+                    const descField = document.getElementById(`subNoteDesc-${i}`);
+                    
+                    if (descField && !firstSubNoteFound) {
+                        const descValue = descField.value || '';
+                        
+                        // Copy first sub-note details back to parent (keep name field as is)
+                        if (descValue) {
+                            quill.root.innerHTML = descValue;
+                        } else {
+                            quill.setContents([]);
+                        }
+                        firstSubNoteFound = true;
+                        console.log('Copied first sub-note details to parent, name field retained');
+                        break;
+                    }
+                }
+                
+                normalDetailsSection.style.display = 'block';
+                subNotesSection.classList.remove('show');
+                subNotesSection.style.display = 'none'; // Hide it
+            }
+            
+            checkForChanges();
+        }
+        
+        function addSubNoteWithData(header, description, bucketId) {
+            bucketId = bucketId || defaultBucketId;
+            addSubNoteToTBucket({header, description}, bucketId);
+        }
+
+        function addSubNoteToTBucket(existingData, bucketId) {
+            bucketId = bucketId || defaultBucketId;
+            console.log('addSubNoteToTBucket called with bucketId:', bucketId);
+            const subNotesList = document.getElementById(`subNotesList-${bucketId}`);
+            console.log('subNotesList element:', subNotesList);
+            if (!subNotesList) {
+                console.warn(`Could not find subNotesList for bucketId: ${bucketId}`);
+                return;
+            }
+            
+            const index = subNoteCount++;
+            const headerValue = existingData && existingData.header ? existingData.header.replace(/"/g, '&quot;') : '';
+            const descValue = existingData && existingData.description ? existingData.description : '';
+            const hasDescription = descValue && descValue.trim() !== '' && descValue !== '<p><br></p>';
+            
+            const subNoteHtml = `
+                <div class="sub-note-item" id="subNote-${index}">
+                    <span class="remove-sub-note" onclick="removeSubNote(${index})">&times;</span>
+                    
+                    <div class="d-flex align-items-center">
+                        <input type="text" class="form-control" id="subNoteHeader-${index}" 
+                               name="subNoteHeaders" required placeholder="Header *"
+                               value="${headerValue}" style="font-weight: 500; flex: 1;">
+                        <input type="hidden" name="subNoteBucketIds" value="${bucketId}">
+                        <button type="button" class="toggle-description-btn" onclick="toggleDescription(${index})" id="toggleBtn-${index}">
+                            ${hasDescription ? '▼ Description' : '+ Description'}
+                        </button>
+                    </div>
+                    <div class="sub-note-description-section ${hasDescription ? 'show' : ''}" id="descSection-${index}">
+                        <div id="subNoteDesc-editor-${index}" style="min-height: 100px; max-height: 300px; margin-top: 0.5rem;"></div>
+                        <textarea class="form-control sub-note-description-field" 
+                                  id="subNoteDesc-${index}" 
+                                  name="subNoteDescriptions" 
+                                  style="display: none;"></textarea>
+                    </div>
+                </div>
+            `;
+            
+            subNotesList.insertAdjacentHTML('beforeend', subNoteHtml);
+            console.log('Sub-note HTML inserted');
+            
+            // Initialize Quill editor for this sub-note
+            const editorContainer = document.getElementById(`subNoteDesc-editor-${index}`);
+            if (editorContainer) {
+                const quillEditor = new Quill(`#subNoteDesc-editor-${index}`, {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['clean', 'link']
+                        ]
+                    }
+                });
+                
+                console.log('Quill editor initialized for index:', index);
+                
+                // Set the description content
+                if (descValue && quillEditor && quillEditor.root) {
+                    quillEditor.root.innerHTML = descValue;
+                    document.getElementById(`subNoteDesc-${index}`).value = descValue;
+                }
+                
+                subNoteEditors[index] = quillEditor;
+                
+                // Sync with hidden textarea
+                quillEditor.on('text-change', function() {
+                    document.getElementById(`subNoteDesc-${index}`).value = quillEditor.root.innerHTML;
+                    checkForChanges();
+                });
+            }
+            
+            updateBucketCounts();
+            checkForChanges();
+        }
+
+        function addSubNote() {
+            // For backward compatibility - add to default bucket
+            addSubNoteToTBucket(null, defaultBucketId);
+        }
+
+        function removeSubNote(index) {
+            if (!confirm('Are you sure you want to delete this sub-note?')) {
+                return;
+            }
+            
+            const subNote = document.getElementById(`subNote-${index}`);
+            if (subNote) {
+                subNote.remove();
+                delete subNoteEditors[index];
+                checkForChanges();
+            }
+        }
+        
+        function toggleDescription(index) {
+            const descSection = document.getElementById(`descSection-${index}`);
+            const toggleBtn = document.getElementById(`toggleBtn-${index}`);
+            
+            if (descSection.classList.contains('show')) {
+                descSection.classList.remove('show');
+                toggleBtn.textContent = '+ Description';
+            } else {
+                descSection.classList.add('show');
+                toggleBtn.textContent = '▼ Description';
+            }
+        }
+        
+        // Tag search functionality with dropdown
+        function initializeTagSearch() {
+            const tagSearchInput = document.getElementById('tagSearch');
+            const tagList = document.getElementById('tagList');
+            const tagItems = document.querySelectorAll('.tag-item');
+            const tagCheckboxes = document.querySelectorAll('.tag-checkbox');
+            const selectedTagsDiv = document.getElementById('selectedTags');
+            const selectedTagsContainer = document.getElementById('selectedTagsContainer');
+            
+            // Show dropdown when input is focused
+            tagSearchInput.addEventListener('focus', function() {
+                tagList.classList.add('show');
+                tagList.style.display = 'block';
+            });
+            
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('.tag-search-container')) {
+                    tagList.classList.remove('show');
+                    tagList.style.display = 'none';
+                }
+            });
+            
+            // Filter tags based on search input
+            tagSearchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                
+                tagItems.forEach(item => {
+                    const tagName = item.getAttribute('data-tag-name').toLowerCase();
+                    if (tagName.includes(searchTerm)) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+            });
+            
+            // Update selected tags display
+            function updateSelectedTags() {
+                const selectedCheckboxes = document.querySelectorAll('.tag-checkbox:checked');
+                selectedTagsContainer.innerHTML = '';
+                
+                if (selectedCheckboxes.length > 0) {
+                    selectedTagsDiv.style.display = 'block';
+                    selectedCheckboxes.forEach(checkbox => {
+                        const label = document.querySelector(`label[for="${checkbox.id}"]`);
+                        const tagName = label.textContent;
+                        
+                        const tagElement = document.createElement('div');
+                        tagElement.className = 'selected-tag';
+                        tagElement.innerHTML = `
+                            ${tagName}
+                            <span class="remove" data-tag-id="${checkbox.value}">&times;</span>
+                        `;
+                        selectedTagsContainer.appendChild(tagElement);
+                    });
+                } else {
+                    selectedTagsDiv.style.display = 'none';
+                }
+            }
+            
+            // Handle tag selection
+            tagCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    updateSelectedTags();
+                    checkForChanges();
+                });
+            });
+            
+            // Handle tag removal from selected tags
+            selectedTagsContainer.addEventListener('click', function(event) {
+                if (event.target.classList.contains('remove')) {
+                    const tagId = event.target.getAttribute('data-tag-id');
+                    const checkbox = document.querySelector(`input[value="${tagId}"]`);
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        updateSelectedTags();
+                        checkForChanges();
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Re-initialize buckets after DOM is ready
+            initializeBuckets();
+            
+            const textarea = document.getElementById('details');
+            nameInput = document.getElementById('name'); // Assign to global variable
+            const form = document.querySelector('form');
+            
+            // Initialize Quill.js
+            quill = new Quill('#details-editor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        ['blockquote', 'code-block'],
+                        [{ 'header': 1 }, { 'header': 2 }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'script': 'sub'}, { 'script': 'super' }],
+                        [{ 'indent': '-1'}, { 'indent': '+1' }],
+                        [{ 'direction': 'rtl' }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'font': [] }],
+                        [{ 'align': [] }],
+                        ['clean', 'link']
+                    ]
+                }
+            });
+            
+            // Auto-resize function for Quill editor
+            function resizeEditor() {
+                const editor = quill.root;
+                const container = editor.parentElement;
+                const scrollHeight = editor.scrollHeight;
+                const minHeight = 120;
+                const maxHeight = 370;
+                
+                let newHeight = Math.max(minHeight, Math.min(maxHeight, scrollHeight));
+                container.style.height = newHeight + 'px';
+            }
+            
+            // Sync Quill content with hidden textarea and resize
+            quill.on('text-change', function() {
+                document.getElementById('details').value = quill.root.innerHTML;
+                setTimeout(resizeEditor, 0); // Delay to ensure content is rendered
+                checkForChanges();
+            });
+            
+            // Initial resize
+            setTimeout(resizeEditor, 100);
+            
+            // Initialize tag search functionality
+            initializeTagSearch();
+            
+            if (nameInput) {
+                nameInput.addEventListener('input', checkForChanges);
+            }
+            
+            // ESC key navigation with change detection
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    if (hasUnsavedChanges) {
+                        const confirmLeave = confirm('You have unsaved changes. Are you sure you want to leave? All changes will be lost.');
+                        if (confirmLeave) {
+                            window.location.href = '/notes';
+                        }
+                    } else {
+                        window.location.href = '/notes';
+                    }
+                }
+            });
+            
+            // Prevent accidental page leave with unsaved changes
+            window.addEventListener('beforeunload', function(event) {
+                if (hasUnsavedChanges) {
+                    event.preventDefault();
+                    event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                    return event.returnValue;
+                }
+            });
+            
+            // Clear the unsaved changes flag when form is submitted
+            form.addEventListener('submit', function() {
+                hasUnsavedChanges = false;
+            });
+        });
+    </script>
+</body>
+</html>
+

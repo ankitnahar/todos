@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Note Details</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf1 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+            padding: 0.75rem 0;
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .page-header .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .page-header h1 {
+            color: white;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn-group-separator {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 0.25rem;
+        }
+        
+        .btn-header {
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        
+        .btn-header-light {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+        }
+        
+        .btn-header-light:hover {
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .btn-header-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-header-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .btn-header-warning {
+            background: #ffc107;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .btn-header-warning:hover {
+            background: #ffca2c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+            color: #333;
+            text-decoration: none;
+        }
+        
+        .btn-header-success {
+            background: #28a745;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .btn-header-success:hover {
+            background: #218838;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .btn-header-danger {
+            background: #dc3545;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .btn-header-danger:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+        
+        /* Make Quill editor look like plain text when read-only */
+        .ql-container.ql-snow {
+            border: none !important;
+        }
+        .ql-editor {
+            padding: 0 !important;
+            font-size: 16px !important;
+            line-height: 1.6 !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        }
+        .ql-toolbar {
+            display: none !important;
+        }
+        
+        /* Sub-notes styling */
+        .sub-notes-container {
+            margin-top: 0;
+        }
+        
+        .sub-note-item {
+            border: none;
+            border-radius: 0;
+            margin-bottom: 0;
+            overflow: hidden;
+            transition: background-color 0.2s ease;
+        }
+        
+        .sub-note-item:hover {
+            background-color: #e9ecef !important;
+        }
+        
+        .sub-note-header {
+            background: transparent;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: none;
+        }
+        
+        .sub-note-header:hover {
+            background: rgba(0,0,0,0.02);
+        }
+        
+        .sub-note-header h6 {
+            margin: 0;
+            font-weight: 600;
+            color: #2c3e50;
+            flex: 1;
+            font-size: 0.95rem;
+        }
+        
+        .sub-note-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .sub-note-toggle {
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+            color: #6c757d;
+        }
+        
+        .sub-note-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .track-subnote-btn {
+            font-size: 0.9em;
+            padding: 0.3rem 0.5rem;
+            margin-right: 0.3rem;
+            transition: all 0.2s ease;
+            color: #6c757d;
+            border-color: #dee2e6;
+            background-color: transparent;
+            border: none;
+        }
+
+        .track-subnote-btn:hover {
+            color: #495057;
+            border-color: #adb5bd;
+        }
+
+        .track-subnote-btn.active {
+            background-color: transparent;
+            border-color: transparent;
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .track-subnote-btn.active:hover {
+            background-color: transparent;
+            border-color: transparent;
+            color: #28a745;
+        }
+        
+        .sub-note-description {
+            padding: 0.5rem 1rem 0.75rem 1rem;
+            background: transparent;
+            display: none;
+        }
+        
+        .sub-note-description.show {
+            display: block;
+        }
+        
+        .sub-notes-container {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        /* Linked subnote styling */
+        .sub-note-item.linked {
+            background-color: #f0fdf4 !important;
+            border-left: 4px solid #20c997 !important;
+        }
+        
+        .sub-note-item.linked .sub-note-header h6::before {
+            content: '🔗 ';
+        }
+        
+        .linked-note-badge {
+            background-color: #20c997;
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+        
+        .bucket-selector {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        
+        .bucket-section {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="main-container">
+            <div class="header-content">
+                <h1>📄 Note Details</h1>
+                <div class="header-actions">
+                    <!-- Navigation -->
+                    <a href="/tasks" class="btn-header btn-header-light">✓ Tasks</a>
+                    <a href="/tags" class="btn-header btn-header-light">🏷️ Tags</a>
+                    <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
+                    
+                    <div class="btn-group-separator"></div>
+                    
+                    <div class="btn-group-separator"></div>
+                    
+                    <!-- Note Actions -->
+                    <a th:href="@{/notes/{id}/edit(id=${note.id})}" class="btn-header btn-header-warning">✏️ Edit</a>
+                    <a href="/buckets/view" class="btn-header btn-header-warning">📋 Bucket View</a>
+                    <a href="/notes/deleted" class="btn-header btn-header-warning">🗑️ Deleted</a>
+                    <a th:href="@{/notes/{id}/convert(id=${note.id})}" class="btn-header btn-header-warning"
+                       onclick="return confirm('Convert this note to a task?')">🔄 Convert</a>
+                    <a th:href="@{/notes/{id}/delete(id=${note.id})}" class="btn-header btn-header-warning"
+                       onclick="return confirm('Delete this note?')">🗑️ Delete</a>
+                    <a href="/notes" class="btn-header btn-header-warning">← Back to Notes</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 th:text="${note.name}">Note Title</h5>
+                <small class="text-muted" th:text="'Created on ' + ${#temporals.format(note.createdAt, 'yyyy-MM-dd HH:mm')}">Created on</small>
+                <div class="mt-2" th:if="${not #lists.isEmpty(note.tags)}">
+                    <span th:each="tag : ${note.tags}" class="badge badge-info mr-1" th:text="${tag.name}">Tag</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Show normal details if not nested -->
+                <div th:if="${!note.nested}">
+                    <div id="details-viewer" style="min-height: 50px;"></div>
+                    <textarea id="details-content" style="display: none;" th:text="${note.details}"></textarea>
+                </div>
+                
+                <!-- Show sub-notes if nested -->
+                <div th:if="${note.nested}">
+                    <div th:if="${note.subNotes != null && !note.subNotes.isEmpty()}">
+                        <div class="d-flex justify-content-between align-items-center mb-2" style="padding: 0 0.5rem;">
+                            <h5 class="mb-0">Sub-Notes</h5>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copyNoteTitles()" id="copyTitlesBtn" title="Copy note with all sub-notes to clipboard">
+                                    <span>Copy Titles</span>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary expand-all-btn" onclick="toggleAllSubNotes()">
+                                    <span id="expandAllText">Expand All</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Bucket Sections -->
+                        <div th:each="bucket : ${allBuckets}" class="bucket-section">
+                            <!-- Only show bucket if it has subnotes -->
+                            <th:block th:with="bucketSubNotes=${#lists.isEmpty(note.subNotes) ? {} : note.subNotes.?[bucketId != null && bucketId == __${bucket.id}__]}">
+                                <fieldset th:if="${!#lists.isEmpty(bucketSubNotes)}" 
+                                          class="border rounded p-3 mb-3" 
+                                          th:style="'border-color: ' + ${bucket.color} + ' !important; border-width: 2px !important;'">
+                                    <legend class="float-none w-auto px-3 mb-0" th:style="'font-size: 1rem; font-weight: 600; color: ' + ${bucket.color} + ';'" th:text="${bucket.name} + ' (' + ${#lists.size(bucketSubNotes)} + ')'">Bucket Name</legend>
+                                
+                                <div class="sub-notes-container">
+                                    <div th:each="subNote, iterStat : ${note.subNotes}" 
+                                         th:if="${subNote.bucketId != null && subNote.bucketId.equals(bucket.id)}"
+                                         th:class="'sub-note-item' + ${subNote.linkedNoteId != null ? ' linked' : ''}"
+                                         th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">
+                                    <div class="sub-note-header" 
+                                         th:onclick="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null} ? 'toggleSubNote(' + ${subNote.id} + ')' : ''"
+                                         th:style="${(subNote.description == null || #strings.isEmpty(#strings.trim(subNote.description)) || subNote.description == '<p><br></p>') && subNote.linkedNoteId == null} ? 'cursor: default;' : ''">
+                                        <h6>
+                                            <span th:text="${subNote.header}">Sub-note header</span>
+                                            <span th:if="${subNote.linkedNoteId != null}" class="linked-note-badge">LINKED</span>
+                                        </h6>
+                                        <div class="sub-note-actions">
+                                            <!-- Track button -->
+                                            <button th:class="${'btn btn-sm track-subnote-btn ' + (subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
+                                                    th:attr="data-subnote-id=${subNote.id}"
+                                                    onclick="toggleTrackSubNote(this, event)"
+                                                    title="Track for Today">
+                                                <span th:if="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
+                                                <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                            </button>
+                                            
+                                            <!-- Bucket dropdown -->
+                                            <select class="form-select form-select-sm bucket-selector" 
+                                                    th:data-subnote-id="${subNote.id}"
+                                                    onchange="moveSubNoteToBucket(this)" 
+                                                    onclick="event.stopPropagation()"
+                                                    style="width: auto; display: inline-block; margin-right: 0.5rem;">
+                                                <option th:each="b : ${allBuckets}" 
+                                                        th:value="${b.id}" 
+                                                        th:text="${b.name}"
+                                                        th:selected="${b.id.equals(subNote.bucketId)}"
+                                                        th:style="${b.id.equals(subNote.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
+                                            </select>
+                                            
+                                            <!-- Edit button for linked notes -->
+                                            <a th:if="${subNote.linkedNoteId != null}" 
+                                               th:href="@{/notes/{id}/edit(id=${subNote.linkedNoteId})}"
+                                               class="btn btn-sm btn-primary" 
+                                               onclick="event.stopPropagation()" 
+                                               title="Edit Linked Note">
+                                                ✏️ Edit
+                                            </a>
+                                            
+                                            <form th:action="@{/notes/{noteId}/subnote/convert/{subNoteId}(noteId=${note.id},subNoteId=${subNote.id})}" 
+                                                  method="post" style="display: inline;" 
+                                                  th:onsubmit="'return confirm(\'Convert this sub-note to a main note?\')'">
+                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                onclick="event.stopPropagation()" 
+                                                title="Convert to Main Note"
+                                                th:if="${subNote.linkedNoteId == null}">
+                                            ⬆️ Convert
+                                        </button>
+                                    </form>
+                                    <span class="sub-note-toggle" 
+                                          th:id="'toggle-' + ${subNote.id}"
+                                          th:style="${(subNote.description == null || #strings.isEmpty(#strings.trim(subNote.description)) || subNote.description == '<p><br></p>') && subNote.linkedNoteId == null} ? 'visibility: hidden;' : ''">▼</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Display linked note content -->
+                            <div th:if="${subNote.linkedNoteId != null && linkedNotes != null && linkedNotes[subNote.linkedNoteId] != null}"
+                                 class="sub-note-description" 
+                                 th:id="'subnote-' + ${subNote.id}">
+                                <div th:id="'subnote-viewer-' + ${subNote.id}" style="min-height: 30px;"></div>
+                                <textarea th:id="'subnote-content-' + ${subNote.id}" style="display: none;" th:text="${linkedNotes[subNote.linkedNoteId].details}"></textarea>
+                            </div>
+                            
+                            <!-- Display regular description -->
+                            <div th:if="${subNote.linkedNoteId == null && subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>'}"
+                                 class="sub-note-description" 
+                                 th:id="'subnote-' + ${subNote.id}">
+                                <div th:id="'subnote-viewer-' + ${subNote.id}" style="min-height: 30px;"></div>
+                                <textarea th:id="'subnote-content-' + ${subNote.id}" style="display: none;" th:text="${subNote.description}"></textarea>
+                            </div>
+                            </div>
+                                </div>
+                            </fieldset>
+                            </th:block>
+                        </div>
+                    </div>
+                    <div th:if="${note.subNotes == null || note.subNotes.isEmpty()}" class="alert alert-info">
+                        No sub-notes added yet. Edit this note to add sub-notes.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        // Initialize Quill editors in read-only mode on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize main note details viewer
+            const detailsViewer = document.getElementById('details-viewer');
+            const detailsContent = document.getElementById('details-content');
+            
+            if (detailsViewer && detailsContent) {
+                const quill = new Quill('#details-viewer', {
+                    theme: 'snow',
+                    readOnly: true,
+                    modules: {
+                        toolbar: false
+                    }
+                });
+                
+                // Set content from textarea
+                if (detailsContent.value) {
+                    quill.root.innerHTML = detailsContent.value;
+                }
+            }
+            
+            // Initialize sub-note viewers
+            const subNoteViewers = document.querySelectorAll('[id^="subnote-viewer-"]');
+            subNoteViewers.forEach(viewer => {
+                const index = viewer.id.replace('subnote-viewer-', '');
+                const contentTextarea = document.getElementById('subnote-content-' + index);
+                
+                if (contentTextarea) {
+                    const quill = new Quill('#' + viewer.id, {
+                        theme: 'snow',
+                        readOnly: true,
+                        modules: {
+                            toolbar: false
+                        }
+                    });
+                    
+                    // Set content from textarea
+                    if (contentTextarea.value) {
+                        quill.root.innerHTML = contentTextarea.value;
+                    }
+                }
+            });
+        });
+        
+        // ESC key navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                window.location.href = '/notes';
+            }
+        });
+        
+        // Sub-notes toggle functionality
+        function toggleSubNote(index) {
+            const description = document.getElementById('subnote-' + index);
+            const toggle = document.getElementById('toggle-' + index);
+            
+            if (description.classList.contains('show')) {
+                description.classList.remove('show');
+                toggle.classList.remove('expanded');
+            } else {
+                description.classList.add('show');
+                toggle.classList.add('expanded');
+            }
+        }
+        
+        function copyNoteTitles() {
+            const titles = [];
+            
+            // Add note name as main title
+            const noteName = document.querySelector('.card-title');
+            if (noteName) {
+                titles.push(noteName.textContent.trim());
+                titles.push(''); // Empty line after note name
+            }
+            
+            // Get all bucket fieldsets
+            const fieldsets = document.querySelectorAll('fieldset');
+            
+            fieldsets.forEach(fieldset => {
+                // Get bucket name from legend
+                const legend = fieldset.querySelector('legend');
+                if (!legend) return;
+                
+                let bucketName = legend.textContent.trim();
+                // Remove the count at the end (e.g., " (5)")
+                bucketName = bucketName.replace(/\s*\(\d+\)\s*$/, '').trim();
+                
+                // Get all sub-note items in this bucket
+                const subNoteItems = fieldset.querySelectorAll('.sub-note-item');
+                const subNoteTitles = [];
+                
+                subNoteItems.forEach(item => {
+                    const headerElement = item.querySelector('h6 span');
+                    if (headerElement) {
+                        let text = headerElement.textContent.trim();
+                        subNoteTitles.push('  ' + text);
+                    }
+                });
+                
+                // Add to main titles if there are sub-notes in this bucket
+                if (subNoteTitles.length > 0) {
+                    titles.push(bucketName);
+                    titles.push(...subNoteTitles);
+                    titles.push(''); // Empty line between buckets
+                }
+            });
+            
+            if (titles.length === 0 || (titles.length === 2 && titles[1] === '')) {
+                alert('No sub-notes to copy');
+                return;
+            }
+            
+            // Remove trailing empty lines
+            while (titles[titles.length - 1] === '') {
+                titles.pop();
+            }
+            
+            // Join titles with newlines
+            const textToCopy = titles.join('\n');
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const btn = document.getElementById('copyTitlesBtn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy titles: ' + err);
+            });
+        }
+        
+        function toggleAllSubNotes() {
+            const allDescriptions = document.querySelectorAll('.sub-note-description');
+            const allToggles = document.querySelectorAll('.sub-note-toggle');
+            const expandAllText = document.getElementById('expandAllText');
+            
+            const anyExpanded = Array.from(allDescriptions).some(desc => desc.classList.contains('show'));
+            
+            allDescriptions.forEach(desc => {
+                if (anyExpanded) {
+                    desc.classList.remove('show');
+                } else {
+                    desc.classList.add('show');
+                }
+            });
+            
+            allToggles.forEach(toggle => {
+                if (anyExpanded) {
+                    toggle.classList.remove('expanded');
+                } else {
+                    toggle.classList.add('expanded');
+                }
+            });
+            
+            expandAllText.textContent = anyExpanded ? 'Expand All' : 'Collapse All';
+        }
+        
+        // Move subnote to different bucket
+        function moveSubNoteToBucket(selectElement) {
+            const subNoteId = selectElement.getAttribute('data-subnote-id');
+            const bucketId = selectElement.value;
+            
+            fetch('/notes/subnote/' + subNoteId + '/move-bucket', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'bucketId=' + bucketId
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload page to show updated bucket grouping
+                    location.reload();
+                } else {
+                    alert('Failed to move sub-note: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to move sub-note');
+            });
+        }
+        
+        // Track sub-note for today
+        function toggleTrackSubNote(button, event) {
+            event.stopPropagation();
+            const subNoteId = button.getAttribute('data-subnote-id');
+            const isCurrentlyTracked = button.classList.contains('active');
+            const endpoint = isCurrentlyTracked ? 'untrack-today' : 'track-today';
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+
+            button.disabled = true;
+
+            fetch(`/api/notes/subnote/${subNoteId}/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken && csrfHeader ? { [csrfHeader]: csrfToken } : {})
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Toggle the visual state and update button text
+                    if (isCurrentlyTracked) {
+                        button.classList.remove('active');
+                        button.innerHTML = '📌';
+                    } else {
+                        button.classList.add('active');
+                        button.innerHTML = '✅';
+                    }
+                    button.disabled = false;
+                } else {
+                    alert('Failed to update tracking status');
+                    button.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating tracking status');
+                button.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
+

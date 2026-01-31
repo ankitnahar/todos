@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tags</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf1 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+            padding: 0.75rem 0;
+            margin-bottom: 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .page-header .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 0.75rem;
+        }
+        
+        .page-header h1 {
+            color: white;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn-group-separator {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 0.25rem;
+        }
+        
+        .btn-header {
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        
+        .btn-header-light {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+        }
+        
+        .btn-header-light:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .btn-header-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+        }
+        
+        .btn-header-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+            transform: translateY(-2px);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .btn-header-primary {
+            background: #ffc107;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .btn-header-primary:hover {
+            background: #ffca2c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+            color: #333;
+            text-decoration: none;
+        }
+        
+        .content-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="main-container">
+            <div class="header-content">
+                <h1>🏷️ Tags</h1>
+                <div class="header-actions">
+                    <!-- Navigation -->
+                    <a href="/notes" class="btn-header btn-header-light">📝 Notes</a>
+                    <a href="/tasks" class="btn-header btn-header-light">✓ Tasks</a>
+                    <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
+                    
+                    <div class="btn-group-separator"></div>
+                    
+                    <!-- Actions -->
+                    <a href="/tags/new" class="btn-header btn-header-primary">➕ Add Tag</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="content-section">
+            <div class="section-title">Manage Tags</div>
+            <p class="text-muted">Tags can be used for both tasks and notes</p>
+
+<table class="table table-bordered">
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Used in Tasks</th>
+        <th>Used in Notes</th>
+        <th>Total Usage</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="tag : ${tags}">
+        <td>
+            <span class="badge bg-primary" th:text="${tag.name}">Tag Name</span>
+        </td>
+        <td>
+            <span class="badge bg-info" th:text="${#lists.size(tag.tasks)} + ' tasks'">0 tasks</span>
+        </td>
+        <td>
+            <span class="badge bg-success" th:text="${#lists.size(tag.notes)} + ' notes'">0 notes</span>
+        </td>
+        <td>
+            <span class="badge bg-secondary" th:text="${#lists.size(tag.tasks) + #lists.size(tag.notes)} + ' total'">0 total</span>
+        </td>
+        <td>
+            <form th:action="@{'/tags/' + ${tag.id} + '/delete'}" method="post" 
+                  onsubmit="return confirm('Delete this tag? This will remove it from all associated tasks and notes.')">
+                <button type="submit" class="btn btn-danger btn-sm" 
+                        th:disabled="${#lists.size(tag.tasks) > 0 || #lists.size(tag.notes) > 0}">
+                    Delete
+                </button>
+            </form>
+            <div th:if="${#lists.size(tag.tasks) > 0 || #lists.size(tag.notes) > 0}" class="mt-1">
+                <small class="text-muted">Cannot delete: Tag is in use</small>
+            </div>
+        </td>
+    </tr>
+    </tbody>
+</table>
+        </div>
+    </div>
+
+</body>
+</html>

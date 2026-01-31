@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>TODO Tasks</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf1 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+            padding: 0.75rem 0;
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .page-header .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 0.75rem;
+        }
+        
+        .page-header h1 {
+            color: white;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn-group-separator {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 0.25rem;
+        }
+        
+        .btn-header {
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        
+        .btn-header-light {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+        }
+        
+        .btn-header-light:hover {
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            color: #667eea;
+        }
+        
+        .btn-header-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-header-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+            color: white;
+        }
+        
+        .btn-header-primary {
+            background: #ffc107;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .btn-header-primary:hover {
+            background: #ffca2c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+            color: #333;
+        }
+        
+        .content-wrapper {
+            padding: 1rem 0;
+        }
+        
+        /* Thick border for filter section */
+        #filterSection {
+            border-width: 3px !important;
+        }
+        /* Align Task List header and Bulk Actions button */
+        .tasklist-header-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .tasklist-header-row h3 {
+            margin-bottom: 0;
+        }
+        /* Ensure Bulk Actions buttons stay in one row and wrap on small screens */
+        .bulk-actions-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .bulk-actions-toggle {
+            margin-left: 1rem;
+        }
+        /* Top bar arrangement - center and space out */
+        .topbar-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .topbar-row .quick-add-form {
+            margin-right: 0;
+        }
+        .btn-same {
+            min-width: 110px;
+        }
+        /* Center quick filter buttons */
+        .quick-filters-row {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        /* Vibrant tag badge colors */
+        .badge-tag-0 { background-color: #0d6efd !important; color: #fff !important; }
+        .badge-tag-1 { background-color: #6610f2 !important; color: #fff !important; }
+        .badge-tag-2 { background-color: #6f42c1 !important; color: #fff !important; }
+        .badge-tag-3 { background-color: #d63384 !important; color: #fff !important; }
+        .badge-tag-4 { background-color: #fd7e14 !important; color: #fff !important; }
+        .badge-tag-5 { background-color: #20c997 !important; color: #fff !important; }
+        .badge-tag-6 { background-color: #198754 !important; color: #fff !important; }
+        .badge-tag-7 { background-color: #ffc107 !important; color: #212529 !important; }
+        .badge-tag-8 { background-color: #dc3545 !important; color: #fff !important; }
+        .badge-tag-9 { background-color: #0dcaf0 !important; color: #212529 !important; }
+        /* Table style */
+        .table-userfriendly {
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .table-userfriendly th {
+            background-color: #e9ecef;
+        }
+
+        /* Compact view styles */
+        .compact-view .non-essential-column {
+            display: none;
+        }
+        .compact-view .task-row {
+            border-bottom: 1px solid #dee2e6;
+            padding: 8px 0;
+        }
+        .compact-view .task-name {
+            font-weight: 500;
+            font-size: 1.05rem;
+        }
+        /* Hide checkboxes and status column in compact view */
+        .compact-view th:first-child,
+        .compact-view td:first-child,
+        .compact-view .status-column {
+            display: none;
+        }
+        /* Status badges in compact view */
+        .compact-status {
+            display: none;
+        }
+        .compact-view .compact-status {
+            display: inline-block !important;
+        }
+        /* Adjust column widths in compact view */
+        .compact-view th:nth-child(2),
+        .compact-view td:nth-child(2) {
+            width: 80%;
+        }
+        .compact-view th:nth-child(6),
+        .compact-view td:nth-child(6) {
+            width: 20%;
+        }
+
+        /* Full page compact mode - hide everything except task name and status */
+        body.compact-mode .non-compact-element {
+            display: none !important;
+        }
+
+        body.compact-mode .compact-table-container {
+            margin-top: 1rem;
+        }
+
+        body.compact-mode #taskTable th:first-child,
+        body.compact-mode #taskTable td:first-child {
+            display: none;
+        }
+
+        body.compact-mode #taskTable .non-essential-column {
+            display: none;
+        }
+
+        body.compact-mode .compact-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        /* Toggle switch styling */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: #2196F3;
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="main-container">
+        <div class="header-content">
+            <h1>✓ Tasks</h1>
+            <div class="header-actions">
+                <!-- Navigation -->
+                <a href="/notes" class="btn-header btn-header-light">📝 Notes</a>
+                <a href="/tags" class="btn-header btn-header-light">🏷️ Tags</a>
+                <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
+                
+                <div class="btn-group-separator"></div>
+                
+                <!-- Note Features -->
+                <a href="/notes/deleted" class="btn-header btn-header-outline">🗑️ Deleted</a>
+                <a href="/buckets/view" class="btn-header btn-header-outline">📋 Bucket View</a>
+                
+                <div class="btn-group-separator"></div>
+                
+                <!-- Actions -->
+                <a href="/tasks/new" class="btn-header btn-header-primary">➕ Add Task</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="main-container content-wrapper">
+
+<!-- Compact view toggle and Quick Actions Row -->
+<div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap non-compact-element">
+    <!-- Quick Add Task -->
+    <fieldset class="border rounded p-2" style="flex: 0 1 auto;">
+        <legend class="float-none w-auto px-2 mb-0" style="font-size: 0.875rem; font-weight: 600;">Quick Add Task</legend>
+        <form method="post" th:action="@{/tasks/quick-add}" class="d-flex align-items-center gap-2 mb-0">
+            <input type="text" name="name" placeholder="Task Name *" class="form-control form-control-sm" required style="max-width: 250px;"/>
+            <button type="submit" class="btn btn-primary btn-sm">Add</button>
+        </form>
+    </fieldset>
+    
+    <!-- Quick Filters -->
+    <fieldset class="border rounded p-2" style="flex: 1 1 auto;">
+        <legend class="float-none w-auto px-2 mb-0" style="font-size: 0.875rem; font-weight: 600;">Quick Filters</legend>
+        <div class="d-flex gap-2 flex-wrap">
+            <form method="get" th:action="@{/tasks}" class="m-0 p-0">
+                <input type="hidden" name="quickFilter" value="today"/>
+                <button type="submit" class="btn btn-outline-primary btn-sm"
+                        th:classappend="${quickFilter} == 'today' ? ' active' : ''">Today</button>
+            </form>
+            <form method="get" th:action="@{/tasks}" class="m-0 p-0">
+                <input type="hidden" name="quickFilter" value="week"/>
+                <button type="submit" class="btn btn-outline-primary btn-sm"
+                        th:classappend="${quickFilter} == 'week' ? ' active' : ''">Week</button>
+            </form>
+            <form method="get" th:action="@{/tasks}" class="m-0 p-0">
+                <input type="hidden" name="quickFilter" value="month"/>
+                <button type="submit" class="btn btn-outline-primary btn-sm"
+                        th:classappend="${quickFilter} == 'month' ? ' active' : ''">Month</button>
+            </form>
+            <form method="get" th:action="@{/tasks}" class="m-0 p-0">
+                <input type="hidden" name="quickFilter" value="all"/>
+                <button type="submit" class="btn btn-outline-primary btn-sm"
+                        th:classappend="${quickFilter} == 'all' ? ' active' : ''">All</button>
+            </form>
+        </div>
+    </fieldset>
+    
+    <!-- Compact View Toggle -->
+    <div class="d-flex align-items-center compact-header" style="flex: 0 0 auto;">
+        <label class="toggle-switch">
+            <input type="checkbox" id="fullCompactViewToggle">
+            <span class="toggle-slider"></span>
+        </label>
+        <label for="fullCompactViewToggle" class="mb-0" style="font-size: 0.875rem;">Compact View</label>
+    </div>
+</div>
+
+<!-- Applied Filters Label -->
+<div th:if="${appliedFilters != null && !appliedFilters.isBlank()}" class="mb-2 non-compact-element">
+    <span class="badge bg-info text-dark" th:text="'Filters: ' + ${appliedFilters}"></span>
+</div>
+
+<!-- All filters visible by default -->
+<div class="border rounded p-3 mb-4 non-compact-element">
+    <form method="get" class="row gy-2 gx-3 align-items-end">
+        <!-- Filter Controls -->
+        <div class="col-md-4 d-flex flex-column">
+            <label for="tags" class="form-label">Tags</label>
+            <select id="tags" name="tagIds" class="form-select" multiple>
+                <option th:each="tag : ${allTags}"
+                        th:value="${tag.id}"
+                        th:text="${tag.name}"
+                        th:selected="${selectedTagIds.contains(tag.id)}"></option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex flex-column">
+            <label for="status" class="form-label">Status</label>
+            <select id="status" name="status" class="form-select">
+                <option value="" th:selected="${status == null}">All</option>
+                <option th:each="stat : ${allStatuses}"
+                        th:value="${stat}"
+                        th:text="${stat}"
+                        th:selected="${stat == status}"></option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex flex-column">
+            <label for="search" class="form-label">Search</label>
+            <input type="search" id="search" name="search" placeholder="Name or Details" class="form-control" th:value="${search}"/>
+        </div>
+        <div class="col-md-2 d-flex flex-column align-self-end">
+            <div class="mb-2">
+                <button type="button" class="btn btn-outline-secondary w-100"
+                        data-bs-toggle="collapse" data-bs-target="#dateRangeSection">
+                    Custom Date Range
+                </button>
+            </div>
+            <button type="submit" class="btn btn-success w-100">Filter</button>
+        </div>
+
+        <!-- Date Range Section (collapsible) -->
+        <div class="col-12 collapse mt-2" id="dateRangeSection">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Custom Date Range</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <label for="startDate" class="form-label">Start Date</label>
+                            <input type="date" id="startDate" name="startDate" class="form-control" th:value="${startDate}"/>
+                        </div>
+                        <div class="col-md-5">
+                            <label for="endDate" class="form-label">End Date</label>
+                            <input type="date" id="endDate" name="endDate" class="form-control" th:value="${endDate}"/>
+                        </div>
+                        <div class="col-md-2 align-self-end">
+                            <a href="/tasks" class="btn btn-outline-secondary w-100">Clear All Filters</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Tasks Table (always visible, user-friendly style) -->
+<form method="post" id="bulkActionForm">
+    <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+    <div class="tasklist-header-row non-compact-element">
+        <h3 class="text-center flex-shrink-0" th:text="'Task List (' + (${tasks != null ? tasks.size() : '0'}) + ')'">Task List</h3>
+        <!-- Export to Excel button - simple black download arrow -->
+        <a id="exportToExcelBtn" class="text-decoration-none"
+           th:href="@{/tasks/export/excel(startDate=${startDate},endDate=${endDate},status=${status},search=${search},tagIds=${selectedTagIds},quickFilter=${quickFilter},showHiddenTasks=${showHiddenTasks},isCompactMode=false)}"
+           title="Export visible tasks to Excel">
+           <span style="font-size: 1.2rem; color: black;">↓</span>
+        </a>
+        <div class="ms-auto d-flex align-items-center">
+            <!-- Table compact view toggle -->
+            <label class="toggle-switch me-3">
+                <input type="checkbox" id="compactViewToggle">
+                <span class="toggle-slider"></span>
+            </label>
+            <label for="compactViewToggle" class="fw-normal me-4">Table Compact View</label>
+
+            <label class="toggle-switch me-3">
+                <input type="checkbox" id="showHiddenTasks" name="showHiddenTasks" th:checked="${showHiddenTasks}" onchange="toggleShowHiddenTasks(this.checked)">
+                <span class="toggle-slider"></span>
+            </label>
+            <label for="showHiddenTasks" class="fw-normal">Show hidden tasks</label>
+        </div>
+        <button class="btn btn-primary btn-same btn-sm bulk-actions-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#bulkActionsSection" aria-expanded="false" aria-controls="bulkActionsSection">
+            Bulk Actions
+        </button>
+        <div class="collapse" id="bulkActionsSection">
+            <div class="bulk-actions-row">
+                <button type="submit" formaction="/tasks/bulk-delete" class="btn btn-danger btn-same btn-sm" id="deleteSelected" disabled title="Delete selected" onclick="return confirm('Delete selected tasks?')">
+                    <span class="d-none d-md-inline">Delete</span> 🗑️
+                </button>
+                <div class="d-flex align-items-center gap-1">
+                    <label for="bulkMoveDate" class="form-label mb-0 visually-hidden">Move to date:</label>
+                    <input type="date" id="bulkMoveDate" name="newDate" class="form-control form-control-sm" style="width:120px"/>
+                    <button type="submit" formaction="/tasks/bulk-move" class="btn btn-warning btn-same btn-sm" id="moveSelected" disabled title="Move selected">
+                        <span class="d-none d-md-inline">Move</span> 📅
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <label for="bulkCopyDate" class="form-label mb-0 visually-hidden">Copy to date:</label>
+                    <input type="date" id="bulkCopyDate" name="newDate" class="form-control form-control-sm" style="width:120px"/>
+                    <button type="submit" formaction="/tasks/bulk-copy" class="btn btn-info btn-same btn-sm" id="copySelected" disabled title="Copy selected">
+                        <span class="d-none d-md-inline">Copy</span> 📋
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="compact-table-container">
+        <!-- Tasks Table (always visible, user-friendly style) -->
+        <table id="taskTable" class="table table-striped table-bordered align-middle table-userfriendly">
+            <thead>
+            <tr>
+                <th style="width: 40px;"><input type="checkbox" id="selectAll"/></th>
+                <th style="width: 40%;">Name</th>
+                <th class="status-header" style="width: 10%;">Status</th>
+                <th class="non-essential-column" style="width: 15%;">Start Date</th>
+                <th class="non-essential-column" style="width: 15%;">End Date</th>
+                <th class="non-essential-column" style="width: 15%;">Tags</th>
+                <th class="non-essential-column" style="width: 5%;">Hide</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="task,iter : ${tasks}">
+                <td><input type="checkbox" name="taskIds" th:value="${task.id}" class="taskCheckbox"/></td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="task-name" th:text="${task.name}">Task Name</span>
+                        <a th:href="@{'/tasks/' + ${task.id}}" class="text-decoration-none" title="View Task">🔗</a>
+                        <a th:href="@{'/tasks/' + ${task.id} + '/copy-task'}" class="ms-1 text-decoration-none" title="Copy Task">📋</a>
+
+                        <!-- Status dropdown moved here -->
+                        <form method="post" th:action="@{'/tasks/' + ${task.id} + '/update-status'}" class="m-0 p-0" style="display:inline;">
+                            <div class="dropdown">
+                                <button class="btn btn-light btn-sm dropdown-toggle py-0 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border:1px solid #ccc;">
+                                    <span class="visually-hidden">Change status</span>
+                                    <span>&#9660;</span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li th:each="st : ${allStatuses}" th:if="${st != task.status}">
+                                        <button class="dropdown-item py-1 px-2" type="submit" name="status" th:value="${st}" th:text="${st}"></button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </form>
+                    </div>
+                </td>
+                <td>
+                    <!-- Only status badge remains here -->
+                    <span th:if="${task.status.name() == 'TODO'}" class="badge bg-secondary">TODO</span>
+                    <span th:if="${task.status.name() == 'IN_PROGRESS'}" class="badge bg-primary">In Progress</span>
+                    <span th:if="${task.status.name() == 'DONE'}" class="badge bg-success">Done</span>
+                    <span th:if="${task.status.name() == 'BLOCKED'}" class="badge bg-danger">Blocked</span>
+                </td>
+                <td class="non-essential-column">
+                    <form method="post" th:action="@{'/tasks/' + ${task.id} + '/update-date'}" onchange="this.submit()">
+                        <input type="date" name="date" class="form-control form-control-sm" th:value="${task.date}"/>
+                    </form>
+                </td>
+                <td class="non-essential-column">
+                    <span th:text="${task.endDate != null ? task.endDate : '-'}"></span>
+                </td>
+                <td class="non-essential-column">
+                    <span th:each="tag, tagIter : ${task.tags}"
+                          th:class="'badge me-1 ' + 'badge-tag-' + ${tagIter.index % 10}"
+                          th:text="${tag.name}">Tag</span>
+                </td>
+                <td class="non-essential-column text-center">
+                    <form th:action="@{'/tasks/' + ${task.id} + '/toggle-hide'}" method="post" style="display:inline;">
+                        <input type="checkbox" name="hiddenForToday" th:checked="${task.hiddenForToday}" onchange="this.form.submit()" />
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</form>
+
+<script>
+    $(document).ready(function () {
+        $('#tags').select2({ placeholder: "Select tags", width: '100%' });
+
+        // Full page compact mode toggle
+        $('#fullCompactViewToggle').change(function() {
+            $('body').toggleClass('compact-mode');
+
+            // Update export URL
+            updateExcelExportUrl();
+
+            // Save preference to localStorage
+            localStorage.setItem('compactMode', $(this).is(':checked'));
+        });
+
+        // Load compact mode preference from localStorage
+        if (localStorage.getItem('compactMode') === 'true') {
+            $('#fullCompactViewToggle').prop('checked', true).trigger('change');
+        } else {
+            // Still need to initialize the export URL
+            updateExcelExportUrl();
+        }
+
+        function updateTaskEventHandlers() {
+            // Reattach event listeners to checkboxes after AJAX update
+            const taskCheckboxes = document.querySelectorAll('.taskCheckbox');
+            taskCheckboxes.forEach(cb => {
+                cb.addEventListener('change', updateButtons);
+            });
+            updateButtons();
+        }
+    });
+
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const taskCheckboxes = document.querySelectorAll('.taskCheckbox');
+    const deleteSelectedBtn = document.getElementById('deleteSelected');
+    const moveSelectedBtn = document.getElementById('moveSelected');
+    const copySelectedBtn = document.getElementById('copySelected');
+    const bulkMoveDate = document.getElementById('bulkMoveDate');
+    const bulkCopyDate = document.getElementById('bulkCopyDate');
+
+    function updateButtons() {
+        const checked = [...taskCheckboxes].some(cb => cb.checked);
+        deleteSelectedBtn.disabled = !checked;
+        moveSelectedBtn.disabled = !checked || !bulkMoveDate.value;
+        copySelectedBtn.disabled = !checked || !bulkCopyDate.value;
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', e => {
+            taskCheckboxes.forEach(cb => cb.checked = e.target.checked);
+            updateButtons();
+        });
+    }
+    taskCheckboxes.forEach(cb => cb.addEventListener('change', updateButtons));
+    if (bulkMoveDate) bulkMoveDate.addEventListener('input', updateButtons);
+    if (bulkCopyDate) bulkCopyDate.addEventListener('input', updateButtons);
+    updateButtons();
+
+    // Table-only compact view toggle
+    const compactViewToggle = document.getElementById('compactViewToggle');
+    const nonEssentialColumns = document.querySelectorAll('.non-essential-column');
+    const taskTable = document.getElementById('taskTable');
+
+    compactViewToggle.addEventListener('change', () => {
+        taskTable.classList.toggle('compact-view');
+        nonEssentialColumns.forEach(col => {
+            col.style.display = compactViewToggle.checked ? 'none' : '';
+        });
+    });
+
+    // Keyboard shortcuts handler
+    document.addEventListener('keydown', function(event) {
+        // Only process shortcuts when not typing in an input field
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
+            return;
+        }
+
+        // H: Toggle Show Hidden Tasks (without requiring Ctrl key)
+        if (!event.ctrlKey && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'h') {
+            event.preventDefault();
+            const showHiddenTasksCheckbox = document.getElementById('showHiddenTasks');
+            showHiddenTasksCheckbox.checked = !showHiddenTasksCheckbox.checked;
+            // Use the toggleShowHiddenTasks function to preserve all URL parameters
+            toggleShowHiddenTasks(showHiddenTasksCheckbox.checked);
+        }
+
+        // C: Toggle Full Compact View (without requiring Ctrl key)
+        if (!event.ctrlKey && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'c') {
+            event.preventDefault();
+            const fullCompactViewToggle = document.getElementById('fullCompactViewToggle');
+            fullCompactViewToggle.checked = !fullCompactViewToggle.checked;
+            fullCompactViewToggle.dispatchEvent(new Event('change'));
+        }
+
+        // Number keys for quick filters
+        if (!event.ctrlKey && !event.altKey && !event.shiftKey && !isNaN(parseInt(event.key))) {
+            const num = parseInt(event.key);
+            if (num === 1) {
+                // 1: Today filter
+                event.preventDefault();
+                location.href = '/tasks?quickFilter=today';
+            } else if (num === 2) {
+                // 2: Week filter
+                event.preventDefault();
+                location.href = '/tasks?quickFilter=week';
+            } else if (num === 3) {
+                // 3: Month filter
+                event.preventDefault();
+                location.href = '/tasks?quickFilter=month';
+            } else if (num === 4) {
+                // 4: All filter
+                event.preventDefault();
+                location.href = '/tasks?quickFilter=all';
+            }
+        }
+
+        // A: Add new task
+        if (!event.ctrlKey && !event.altKey && !event.shiftKey && event.key === 'a') {
+            event.preventDefault();
+            location.href = '/tasks/new';
+        }
+    });
+
+    // Update the Export to Excel URL based on compact mode
+    function updateExcelExportUrl() {
+        const exportBtn = document.getElementById('exportToExcelBtn');
+        if (!exportBtn) return;
+
+        // Check if either the page is in compact mode OR the table is in compact view
+        const isFullCompactMode = document.getElementById('fullCompactViewToggle').checked;
+        const isTableCompactView = document.getElementById('compactViewToggle') &&
+                                  document.getElementById('compactViewToggle').checked;
+
+        // If either compact mode is active, use compact export
+        const isCompactMode = isFullCompactMode || isTableCompactView;
+
+        let currentUrl = exportBtn.getAttribute('href');
+
+        // Replace or add the isCompactMode parameter
+        if (currentUrl.includes('isCompactMode=')) {
+            currentUrl = currentUrl.replace(/isCompactMode=(true|false)/, `isCompactMode=${isCompactMode}`);
+        } else {
+            currentUrl += currentUrl.includes('?') ? '&' : '?';
+            currentUrl += `isCompactMode=${isCompactMode}`;
+        }
+
+        exportBtn.setAttribute('href', currentUrl);
+    }
+
+    function toggleShowHiddenTasks(checked) {
+        // Preserve existing URL parameters when toggling
+        const url = new URL(window.location);
+        url.searchParams.set('showHiddenTasks', checked);
+        window.location.href = url.toString();
+    }
+</script>
+
+</div> <!-- Close main-container -->
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Task Table Body Fragment -->
+<tbody th:fragment="taskTableBody" id="taskTableBody">
+    <tr th:each="task,iter : ${tasks}">
+        <td><input type="checkbox" name="taskIds" th:value="${task.id}" class="taskCheckbox"/></td>
+        <td>
+            <!-- Remove flex-wrap and use a simpler structure -->
+            <span class="task-name" th:text="${task.name}">Task Name</span>
+
+            <!-- Status badge right after name without breaking line -->
+            <span th:if="${task.status.name() == 'TODO'}" class="badge bg-secondary ms-2">TODO</span>
+            <span th:if="${task.status.name() == 'IN_PROGRESS'}" class="badge bg-primary ms-2">In Progress</span>
+            <span th:if="${task.status.name() == 'DONE'}" class="badge bg-success ms-2">Done</span>
+            <span th:if="${task.status.name() == 'BLOCKED'}" class="badge bg-danger ms-2">Blocked</span>
+
+            <!-- Action buttons with no extra divs or spacing elements -->
+            <a th:href="@{'/tasks/' + ${task.id}}" class="text-decoration-none ms-2" title="View Task">🔗</a>
+            <a th:href="@{'/tasks/' + ${task.id} + '/copy-task'}" class="text-decoration-none" title="Copy Task">📋</a>
+
+            <!-- Status dropdown with minimal inline styling -->
+            <form method="post" th:action="@{'/tasks/' + ${task.id} + '/update-status'}" style="display:inline; margin:0; padding:0;">
+                <button class="btn btn-light btn-sm dropdown-toggle py-0 px-1" style="border:1px solid #ccc; font-size: 0.7rem;" type="button" data-bs-toggle="dropdown">
+                    <span>&#9660;</span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li th:each="st : ${allStatuses}" th:if="${st != task.status}">
+                        <button class="dropdown-item py-1 px-2" type="submit" name="status" th:value="${st}" th:text="${st}"></button>
+                    </li>
+                </ul>
+            </form>
+
+            <!-- Hide checkbox -->
+            <form th:action="@{'/tasks/' + ${task.id} + '/toggle-hide'}" method="post" style="display:inline; margin:0;">
+                <input type="checkbox" name="hiddenForToday" th:checked="${task.hiddenForToday}" onchange="this.form.submit()" title="Hide Task" />
+            </form>
+
+            <!-- Date with simplified styling -->
+            <form method="post" th:action="@{'/tasks/' + ${task.id} + '/update-date'}" onchange="this.submit()" style="display:inline-flex; align-items:center; margin-left:3px;">
+                <input type="date" name="date" class="form-control form-control-sm" style="width:110px; font-size:0.8rem; height:24px;" th:value="${task.date}"/>
+                <span class="ms-1 small text-muted" th:if="${task.endDate != null}">→ <span th:text="${task.endDate}"></span></span>
+            </form>
+        </td>
+        <td class="status-column">
+            <!-- Status indicator for compact mode compatibility -->
+            <span th:if="${task.status.name() == 'TODO'}" class="badge bg-secondary">TODO</span>
+            <span th:if="${task.status.name() == 'IN_PROGRESS'}" class="badge bg-primary">In Progress</span>
+            <span th:if="${task.status.name() == 'DONE'}" class="badge bg-success">Done</span>
+            <span th:if="${task.status.name() == 'BLOCKED'}" class="badge bg-danger">Blocked</span>
+        </td>
+        <td class="non-essential-column">
+            <!-- Empty - moved to main column -->
+        </td>
+        <td class="non-essential-column">
+            <!-- Empty - moved to main column -->
+        </td>
+        <td class="non-essential-column">
+            <span th:each="tag, tagIter : ${task.tags}"
+                  th:class="'badge me-1 ' + 'badge-tag-' + ${tagIter.index % 10}"
+                  th:text="${tag.name}">Tag</span>
+        </td>
+        <td class="non-essential-column">
+            <!-- Empty - moved to main column -->
+        </td>
+    </tr>
+</tbody>
+</body>
+</html>

@@ -1,0 +1,11 @@
+
+Manual Costs - for all the functional lines
+Always assignment quanitty for all forumla types execpt variable formula
+In case of variable - cni will get the quantiy basaed on the wegiht basis from logistics.
+
+for Bulk
+	if primary cost code(will include manual as well auto costs) is C01 / I01 from PM contractual quanity
+	for C01BM, I01BM, C01DBM, I01DBM, C01PBM, I01PBM, from PM intent quanity
+for other business lines - RFML, CONT
+	if primary cost code(will include manual as well auto costs) is C01 / I01 use assignment quanity
+	for intent use invenvory quantity

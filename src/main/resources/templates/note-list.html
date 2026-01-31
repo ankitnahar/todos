@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf1 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+            padding: 0.75rem 0;
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .page-header .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 0.75rem;
+        }
+        
+        .page-header h1 {
+            color: white;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn-group-separator {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 0.25rem;
+        }
+        
+        .btn-header {
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+        }
+        
+        .btn-header-light {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+        }
+        
+        .btn-header-light:hover {
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-header-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-header-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+        }
+        
+        .btn-header-primary {
+            background: #ffc107;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .btn-header-primary:hover {
+            background: #ffca2c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+        }
+        
+        .filter-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-card .row {
+            align-items: flex-end;
+        }
+        
+        .filter-card label {
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #495057;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+        
+        .filter-card .form-control,
+        .filter-card .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        
+        .filter-card .form-control:focus,
+        .filter-card .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .filter-buttons .btn {
+            flex: 1;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-outline-secondary {
+            border: 2px solid #e9ecef;
+            color: #6c757d;
+            background: white;
+        }
+        
+        .btn-outline-secondary:hover {
+            background: #f8f9fa;
+            border-color: #adb5bd;
+            color: #495057;
+        }
+        
+        .applied-filters {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%);
+            color: #1565c0;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            border: 1px solid #bbdefb;
+        }
+        
+        .notes-list {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .note-item {
+            display: flex;
+            align-items: center;
+            padding: 0.45rem 1rem;
+            border-bottom: none;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .note-item.tracked-today {
+            background-color: transparent !important;
+            border-left: 4px solid #28a745 !important;
+            padding-left: calc(1rem - 1px);
+        }
+        
+        .note-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .note-item:hover {
+            background-color: #d4e4ff !important;
+            transform: translateX(3px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+            border: 2px solid #004085;
+            border-radius: 6px;
+        }
+        
+        .note-item:hover::before {
+            opacity: 1;
+        }
+        
+        .note-left {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .note-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0;
+            line-height: 1.3;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .favorite-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .favorite-btn:hover {
+            transform: scale(1.15);
+        }
+        
+        .favorite-btn .star-icon::before {
+            content: '☆';
+            color: #cbd5e0;
+        }
+        
+        .favorite-btn.active .star-icon::before {
+            content: '★';
+            color: #ffd700;
+            filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.4));
+        }
+        
+        .note-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            align-items: center;
+        }
+        
+        .tag-badge {
+            background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%);
+            color: #1565c0;
+            padding: 0.15rem 0.45rem;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            border: 1px solid #bbdefb;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        
+        .note-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+        
+        .note-timestamp {
+            color: #868e96;
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+            min-width: 90px;
+            text-align: right;
+        }
+        
+        .note-actions {
+            display: flex;
+            gap: 0.25rem;
+            align-items: center;
+        }
+        
+        .action-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: #f8f9fa;
+            color: #495057;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            text-decoration: none;
+        }
+        
+        .copy-btn:hover {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .copy-btn.copied {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .view-btn:hover {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .edit-btn:hover {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .delete-btn:hover {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+        
+        .duplicate-btn {
+            padding: 0.4rem 0.5rem;
+            border-radius: 6px;
+            background: white;
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+        
+        .duplicate-btn:hover {
+            background: #fff9e6;
+            color: #ff9800;
+            border-color: #ff9800;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            text-decoration: none;
+        }
+        
+        .convert-btn {
+            padding: 0.35rem 0.75rem;
+            border-radius: 7px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .convert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .no-notes-message {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        }
+        
+        .no-notes-message .alert {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        
+        .no-notes-message h4 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.75rem;
+        }
+        
+        .no-notes-message p {
+            color: #6c757d;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .no-notes-message .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        
+        .alert {
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            border: none;
+            font-weight: 500;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+        }
+        
+        @media (max-width: 1200px) {
+            .note-right {
+                gap: 0.75rem;
+            }
+            
+            .note-timestamp {
+                min-width: 85px;
+                font-size: 0.8rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .note-item {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 1rem;
+                gap: 0.75rem;
+            }
+            
+            .note-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .note-right {
+                justify-content: space-between;
+                width: 100%;
+            }
+            
+            .note-timestamp {
+                order: -1;
+                text-align: left;
+            }
+            
+            .note-actions {
+                flex-wrap: wrap;
+            }
+            
+            .page-header .header-content {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .page-header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .header-actions {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-container {
+                padding: 0 12px;
+            }
+            
+            .note-item {
+                padding: 0.85rem;
+            }
+            
+            .btn-header {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="main-container">
+            <div class="header-content">
+                <h1>📝 Notes</h1>
+                <div class="header-actions">
+                    <!-- Main Navigation -->
+                    <a th:href="@{/tasks(quickFilter=${lastQuickFilter})}" class="btn-header btn-header-light">✓ Tasks</a>
+                    <a href="/tags" class="btn-header btn-header-light">🏷️ Tags</a>
+                    <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
+                    
+                    <div class="btn-group-separator"></div>
+                    
+                    <div class="btn-group-separator"></div>
+                    
+                    <!-- Actions -->
+                    <a href="/notes/add" class="btn-header btn-header-primary">➕ Add Note</a>
+                    <a href="/notes/deleted" class="btn-header btn-header-primary">🗑️ Deleted</a>
+                    <a href="/buckets/view" class="btn-header btn-header-primary">📋 Bucket View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+        <!-- Applied Filters -->
+        <div th:if="${appliedFilters != null && !appliedFilters.isBlank()}">
+            <span class="applied-filters" th:text="'🔍 ' + ${appliedFilters}"></span>
+        </div>
+
+        <!-- Filter Card -->
+        <div class="filter-card">
+            <form method="get" class="row">
+                <div class="col-md-3">
+                    <label for="tags" class="form-label">Tags</label>
+                    <select id="tags" name="tagIds" class="form-select" multiple>
+                        <option th:each="tag : ${allTags}"
+                                th:value="${tag.id}"
+                                th:text="${tag.name}"
+                                th:selected="${selectedTagIds.contains(tag.id)}"></option>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="search" id="search" name="search" placeholder="Search notes..." 
+                           class="form-control" th:value="${search}"/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Actions</label>
+                    <div class="filter-buttons">
+                        <button type="submit" class="btn btn-primary">🔍 Filter</button>
+                        <a href="/notes" class="btn btn-outline-secondary">Clear</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Notes List -->
+        <div th:if="${notes.empty}" class="no-notes-message">
+            <div class="alert alert-info">
+                <h4>📝 No notes found!</h4>
+                <p>Start organizing your thoughts by adding your first note.</p>
+                <a href="/notes/add" class="btn btn-primary btn-lg mt-2">Create Your First Note</a>
+            </div>
+        </div>
+
+        <div class="notes-list" th:if="${!notes.empty}">
+            <div th:each="note, iterStat : ${notes}" 
+                 class="note-item"
+                 th:classappend="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
+                 th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}"
+                 th:attr="data-note-url=@{/notes/{id}(id=${note.id})}"
+                 ondblclick="handleNoteDoubleClick(event, this)">
+                <div class="note-left">
+                    <button th:class="${'favorite-btn ' + (note.favorite ? 'active' : '')}" 
+                            th:attr="data-note-id=${note.id}"
+                            onclick="toggleFavorite(this)"
+                            title="Toggle Favorite">
+                        <span class="star-icon"></span>
+                    </button>
+                    <h3 class="note-title" th:text="${note.name}">Note Title</h3>
+                    <div class="note-tags" th:if="${not #lists.isEmpty(note.tags)}">
+                        <span th:each="tag : ${note.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
+                    </div>
+                </div>
+                
+                <div class="note-right">
+                    <span class="note-timestamp" th:text="${#temporals.format(note.updatedAt, 'MMM dd, HH:mm')}">Updated</span>
+                    <div class="note-actions">
+                        <button class="action-btn track-btn" 
+                                th:attr="data-note-id=${note.id}"
+                                th:class="${'action-btn track-btn ' + (note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
+                                onclick="toggleTrackNote(this, event)"
+                                title="Track for Today"
+                                style="font-size: 1.1em;">
+                            <span th:if="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
+                            <span th:unless="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                        </button>
+                        <button class="action-btn copy-btn" 
+                                th:attr="data-note-id=${note.id},data-note-name=${note.name},data-note-details=${note.details}"
+                                onclick="copyNoteToClipboard(this)"
+                                title="Copy to Clipboard">
+                            📋
+                        </button>
+                        <a th:href="@{/notes/{id}(id=${note.id})}" 
+                           class="action-btn view-btn" 
+                           title="View">
+                            👁️
+                        </a>
+                        <a th:href="@{/notes/{id}/edit(id=${note.id})}" 
+                           class="action-btn edit-btn" 
+                           title="Edit">
+                            ✏️
+                        </a>
+                        <a th:href="@{/notes/{id}/duplicate(id=${note.id})}" 
+                           class="action-btn duplicate-btn" 
+                           title="Duplicate">
+                            🔁
+                        </a>
+                        <a th:href="@{/notes/{id}/delete(id=${note.id})}" 
+                           class="action-btn delete-btn"
+                           onclick="return confirm('Delete this note?')"
+                           title="Delete">
+                            ×
+                        </a>
+                        <a th:href="@{/notes/{id}/convert(id=${note.id})}" 
+                           class="convert-btn"
+                           onclick="return confirm('Convert to task?')" 
+                           title="Convert to Task">
+                            → Task
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2 for tag dropdown
+            $('#tags').select2({
+                placeholder: 'Select tags to filter...',
+                allowClear: true,
+                width: '100%'
+            });
+        });
+
+        function toggleFavorite(button) {
+            const noteId = button.getAttribute('data-note-id');
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+
+            // Disable button during request
+            button.disabled = true;
+
+            fetch(`/notes/${noteId}/toggle-favorite`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken && csrfHeader ? { [csrfHeader]: csrfToken } : {})
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Toggle the visual state immediately
+                    if (data.favorite) {
+                        button.classList.add('active');
+                    } else {
+                        button.classList.remove('active');
+                    }
+                    // Reload page to update sorting
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    alert('Failed to update favorite status');
+                    button.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating favorite status');
+                button.disabled = false;
+            });
+        }
+
+        function toggleTrackNote(button, event) {
+            event.stopPropagation();
+            const noteId = button.getAttribute('data-note-id');
+            const isCurrentlyTracked = button.classList.contains('active');
+            const endpoint = isCurrentlyTracked ? 'untrack-today' : 'track-today';
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+
+            button.disabled = true;
+
+            fetch(`/api/notes/${noteId}/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken && csrfHeader ? { [csrfHeader]: csrfToken } : {})
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Toggle the visual state and update button text
+                    if (isCurrentlyTracked) {
+                        button.classList.remove('active');
+                        button.closest('.note-item').classList.remove('tracked-today');
+                        button.textContent = '📌';
+                    } else {
+                        button.classList.add('active');
+                        button.closest('.note-item').classList.add('tracked-today');
+                        button.textContent = '✅';
+                    }
+                    button.disabled = false;
+                } else {
+                    alert('Failed to update tracking status');
+                    button.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating tracking status');
+                button.disabled = false;
+            });
+        }
+
+        async function copyNoteToClipboard(button) {
+            const noteId = button.getAttribute('data-note-id');
+            const noteName = button.getAttribute('data-note-name');
+            
+            try {
+                // Fetch full note data including sub-notes
+                const response = await fetch(`/api/notes/${noteId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch note data');
+                }
+                
+                const note = await response.json();
+                
+                // Build formatted content
+                let plainText = `📝 ${note.name}\n`;
+                plainText += '='.repeat(50) + '\n\n';
+                
+                // Add main details if present
+                if (note.details && note.details.trim() !== '') {
+                    plainText += note.details.replace(/<[^>]*>/g, '') + '\n\n';
+                }
+                
+                // Add sub-notes if present
+                if (note.subNotes && note.subNotes.length > 0) {
+                    plainText += '📋 SUB-NOTES:\n';
+                    plainText += '-'.repeat(50) + '\n\n';
+                    
+                    note.subNotes.forEach((subNote, index) => {
+                        plainText += `${index + 1}. ${subNote.header}\n`;
+                        if (subNote.description && subNote.description.trim() !== '') {
+                            // Convert HTML tags to newlines before stripping
+                            let desc = subNote.description;
+                            desc = desc.replace(/<br\s*\/?>/gi, '\n');
+                            desc = desc.replace(/<\/p>/gi, '\n');
+                            desc = desc.replace(/<p[^>]*>/gi, '');
+                            desc = desc.replace(/<[^>]*>/g, '');
+                            plainText += desc + '\n';
+                        }
+                        plainText += '\n'; // Add blank line after each sub-note
+                    });
+                }
+                
+                // Build HTML content
+                let htmlContent = `<div style="font-family: Arial, sans-serif; line-height: 1.6;"><h2>📝 ${note.name}</h2>`;
+                htmlContent += '<hr style="border: 1px solid #ddd; margin: 15px 0;">';
+                
+                if (note.details && note.details.trim() !== '') {
+                    htmlContent += `<div>${note.details}</div><br>`;
+                }
+                
+                if (note.subNotes && note.subNotes.length > 0) {
+                    htmlContent += '<h3>📋 SUB-NOTES:</h3>';
+                    note.subNotes.forEach((subNote, index) => {
+                        htmlContent += `<div style="border-left: 3px solid #667eea; padding-left: 15px; margin-bottom: 15px;">`;
+                        htmlContent += `<strong>${index + 1}. ${subNote.header}</strong>`;
+                        if (subNote.description && subNote.description.trim() !== '') {
+                            htmlContent += `<div style="margin-top: 8px;">${subNote.description}</div>`;
+                        }
+                        htmlContent += '</div>';
+                    });
+                }
+                
+                htmlContent += '</div>';
+                
+                // Try to copy both HTML and plain text formats
+                try {
+                    const clipboardItem = new ClipboardItem({
+                        'text/html': new Blob([htmlContent], { type: 'text/html' }),
+                        'text/plain': new Blob([plainText], { type: 'text/plain' })
+                    });
+                    
+                    await navigator.clipboard.write([clipboardItem]);
+                } catch (clipboardErr) {
+                    // Fallback: copy plain text only
+                    await navigator.clipboard.writeText(plainText);
+                }
+                
+                // Visual feedback
+                const originalContent = button.innerHTML;
+                button.innerHTML = '✓';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.innerHTML = originalContent;
+                    button.classList.remove('copied');
+                }, 2000);
+                
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard. Please try copying manually.');
+            }
+        }
+    
+    function handleNoteDoubleClick(event, noteElement) {
+        // Don't navigate if double-clicking on buttons, links, or interactive elements
+        const target = event.target;
+        const isButton = target.closest('button, a, .action-btn, .favorite-btn, .convert-btn, .copy-btn');
+        
+        if (!isButton) {
+            const url = noteElement.getAttribute('data-note-url');
+            if (url) {
+                window.location.href = url;
+            }
+        }
+    }
+    </script>
+</body>
+</html>

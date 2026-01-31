@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Note</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script>
+        // Helper function to insert table into Quill editor
+        function insertTable(quillEditor, rows, cols) {
+            const tableHtml = `<table border="1" cellpadding="5" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+                ${Array(rows).fill().map(() => `
+                <tr>
+                    ${Array(cols).fill().map(() => '<td><br></td>').join('')}
+                </tr>
+                `).join('')}
+            </table>`;
+            
+            const delta = quillEditor.clipboard.convert(tableHtml);
+            quillEditor.setContents(delta);
+            quillEditor.setSelection(quillEditor.getLength());
+        }
+    </script>
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf1 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+            padding: 0.75rem 0;
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .page-header .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .page-header h1 {
+            color: white;
+            font-weight: 600;
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn-group-separator {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 0.25rem;
+        }
+        
+        .btn-header {
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        
+        .btn-header-light {
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+        }
+        
+        .btn-header-light:hover {
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .btn-header-warning {
+            background: #ffc107;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .btn-header-warning:hover {
+            background: #ffca2c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+            color: #333;
+            text-decoration: none;
+        }
+        
+        /* Compact Quill editor */
+        .ql-toolbar {
+            padding: 0.25rem 0.4rem !important;
+            border-radius: 4px 4px 0 0 !important;
+        }
+        
+        .ql-toolbar button {
+            width: 24px !important;
+            height: 24px !important;
+            padding: 2px !important;
+        }
+        
+        .ql-editor {
+            font-size: 16px !important;
+            line-height: 1.6 !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            min-height: 150px !important;
+            overflow-y: auto !important;
+            padding: 0.5rem !important;
+            max-height: none !important;
+        }
+        
+        .ql-editor p {
+            margin-bottom: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Sub-note description editors even more compact */
+        .sub-note-description-section .ql-toolbar {
+            padding: 0.2rem 0.3rem !important;
+        }
+        
+        .sub-note-description-section .ql-toolbar button {
+            width: 20px !important;
+            height: 20px !important;
+        }
+        
+        .sub-note-description-section .ql-editor {
+            font-size: 16px !important;
+            line-height: 1.6 !important;
+            min-height: 60px !important;
+            max-height: 300px !important;
+            padding: 0.5rem !important;
+            overflow-y: auto !important;
+        }
+        
+        .sub-note-description-section .ql-editor p {
+            margin-bottom: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Auto-resize container */
+        .ql-container {
+            height: auto !important;
+        }
+        
+        /* Prevent Quill editor from overflowing */
+        .sub-note-description-section .ql-container {
+            max-width: 100%;
+            overflow: visible;
+            border-radius: 4px;
+        }
+        
+        .sub-note-description-section .ql-editor {
+            max-width: 100%;
+            overflow-x: hidden;
+            border-radius: 0 0 4px 4px;
+        }
+        
+        .sub-note-description-section {
+            max-width: 100%;
+            overflow: visible;
+        }
+        
+        /* Compact form styling */
+        .form-group {
+            margin-bottom: 0.75rem;
+        }
+        
+        .form-group label {
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .form-control, .form-select {
+            font-size: 0.875rem;
+            padding: 0.375rem 0.5rem;
+        }
+        
+        .sub-note-item .form-control,
+        .sub-note-item .form-select {
+            font-size: 0.95rem;
+            padding: 0.25rem 0.4rem;
+        }
+        
+        /* Subnote header input/textarea specific styling */
+        .sub-note-item input[name="subNoteHeaders"],
+        .sub-note-item textarea[name="subNoteHeaders"] {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .sub-note-item textarea[name="subNoteHeaders"] {
+            min-height: 32px;
+            max-height: 200px;
+            overflow-y: auto;
+            resize: vertical;
+        }
+
+        .form-control:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .card {
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .tag-suggestion {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .tag-suggestion:hover {
+            background-color: #007bff !important;
+            color: white !important;
+            transform: translateY(-1px);
+        }
+        .tag-search-container {
+            position: relative;
+        }
+        .tag-list {
+            background-color: #f8f9fa;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .tag-list.show {
+            display: block !important;
+        }
+        #selectedTagsContainer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.25rem;
+        }
+        .selected-tag {
+            background-color: #007bff;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .selected-tag .remove {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .tag-item {
+            padding: 6px 12px;
+            margin: 2px 0;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        .tag-item:hover {
+            background-color: #e9ecef;
+        }
+        .tag-item.hidden {
+            display: none;
+        }
+        .tag-item .form-check-input {
+            margin-top: 0;
+            margin-right: 8px;
+            position: static;
+        }
+        .tag-item .form-check-label {
+            margin-bottom: 0;
+            cursor: pointer;
+            flex: 1;
+        }
+        .form-check-input:checked + .form-check-label {
+            font-weight: 600;
+            color: #007bff;
+        }
+        
+        /* Sub-notes styling - COMPACT MODERN VERSION */
+        .sub-notes-section {
+            display: none;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-top: 0.75rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+        
+        .sub-notes-section.show {
+            display: block;
+        }
+        
+        .sub-note-item {
+            background: white;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+            transition: background-color 0.2s ease;
+        }
+        
+        .sub-note-item:hover {
+            background-color: #e9ecef !important;
+        }
+        
+        /* Linked subnote styling - different color */
+        .sub-note-item.linked {
+            border-left-color: #20c997;
+            background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+        }
+        
+        .sub-note-item.linked::before {
+            content: '🔗';
+            position: absolute;
+            left: 0.6rem;
+            top: 0.6rem;
+            font-size: 0.9rem;
+        }
+        
+        .linked-note-info {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: #065f46;
+            border-left: 3px solid #10b981;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+        
+        .linked-note-info a {
+            color: #065f46;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            background: white;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+        }
+        
+        .linked-note-info a:hover {
+            background: #f0fdf4;
+            transform: translateY(-1px);
+        }
+        
+        .sub-note-item .remove-sub-note {
+            cursor: pointer;
+            color: #dc3545;
+            font-size: 1.2rem;
+            line-height: 1;
+            padding: 0 0.25rem;
+            background: transparent;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        
+        .sub-note-item .remove-sub-note:hover {
+            color: #bd2130;
+            transform: scale(1.2);
+        }
+        
+        .add-sub-note-btn {
+            width: 100%;
+            border: 2px dashed #667eea;
+            background: white;
+            padding: 0.5rem;
+            border-radius: 8px;
+            color: #667eea;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+        
+        .add-sub-note-btn:hover {
+            border-color: #667eea;
+            border-style: solid;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.25);
+            transform: translateY(-1px);
+        }
+        
+        .add-sub-note-btn::before {
+            content: '+';
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        
+        .sub-note-control-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        
+        .sub-note-controls-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: transparent;
+            justify-content: space-between;
+        }
+        
+        .sub-note-field-group {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        
+        .sub-note-field-group.header-field {
+            flex: 1;
+        }
+        
+        .sub-note-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .sub-note-field-group.bucket-field,
+        .sub-note-field-group.toggle-field {
+            width: auto;
+        }
+        
+        .sub-note-item .form-select,
+        .sub-note-item .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+        
+        .sub-note-item textarea[name="subNoteHeaders"] {
+            border: none;
+            background: transparent;
+            font-size: 0.95rem;
+            font-weight: 500;
+            padding: 0.3rem 0.5rem;
+            resize: none;
+        }
+        
+        .sub-note-item textarea[name="subNoteHeaders"]:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+        }
+        
+        .sub-note-field-group.bucket-field select {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            min-width: 120px;
+        }
+        
+        .sub-note-item .form-select:focus,
+        .sub-note-item .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+        
+        .sub-note-item textarea.form-control {
+            min-height: 36px;
+        }
+        
+        .toggle-description-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+            padding: 0;
+            font-size: 1.2rem;
+            color: #6c757d;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        
+        .toggle-description-btn:hover {
+            color: #495057;
+        }
+        
+        .toggle-description-btn.expanded {
+            transform: rotate(180deg);
+        }
+        
+        .toggle-description-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25);
+        }
+        
+        .sub-note-description-section {
+            display: none;
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            margin-left: 1rem;
+            margin-right: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            background: linear-gradient(white, white) padding-box,
+                        linear-gradient(135deg, #667eea 0%, #764ba2 100%) border-box;
+            border: 2px solid transparent;
+        }
+        
+        .sub-note-description-section.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="main-container">
+            <div class="header-content">
+                <h1>✏️ Edit Note</h1>
+                <div class="header-actions">
+                    <!-- Main Navigation -->
+                    <a href="/tasks" class="btn-header btn-header-light">✓ Tasks</a>
+                    <a href="/tags" class="btn-header btn-header-light">🏷️ Tags</a>
+                    <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
+                    
+                    <div class="btn-group-separator"></div>
+                    
+                    <!-- Note Actions -->
+                    <a href="/buckets/view" class="btn-header btn-header-warning">📋 Bucket View</a>
+                    <a href="/notes/deleted" class="btn-header btn-header-warning">🗑️ Deleted</a>
+                    <a th:href="@{/notes/{id}/convert(id=${note.id})}" class="btn-header btn-header-warning"
+                       onclick="return confirm('Convert this note to a task?')">🔄 Convert</a>
+                    <a th:href="@{/notes/{id}/delete(id=${note.id})}" class="btn-header btn-header-warning"
+                       onclick="return confirm('Delete this note?')">🗑️ Delete</a>
+                    <a href="/notes" class="btn-header btn-header-warning">← Back to Notes</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-container mt-4">
+        <div class="card">
+            <div class="card-body">
+                <form th:action="@{/notes/{id}/edit(id=${note.id})}" th:object="${note}" method="post">
+                    <input type="hidden" th:field="*{id}">
+                    <input type="hidden" th:field="*{createdAt}">
+                    <input type="hidden" th:field="*{updatedAt}">
+                    
+                    <!-- Hidden inputs for bucket data -->
+                    <div th:each="bucket : ${allBuckets}" style="display: none;">
+                        <input type="hidden" class="bucket-data"
+                               th:attr="data-id=${bucket.id}, data-name=${bucket.name}, data-is-default=${bucket.isDefault}, data-color=${bucket.color}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="name">Name *</label>
+                        <input type="text" class="form-control" id="name" th:field="*{name}" required>
+                        <div class="text-danger" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="d-flex align-items-center gap-3" style="gap: 2rem;">
+                            <div class="form-check mb-0">
+                                <input type="checkbox" class="form-check-input" id="favorite" th:field="*{favorite}">
+                                <label class="form-check-label" for="favorite">⭐ Mark as Favorite</label>
+                            </div>
+                            <div class="form-check mb-0">
+                                <input type="checkbox" class="form-check-input" id="nested" name="nested" 
+                                       th:checked="${note.nested}" onchange="toggleNestedMode()">
+                                <label class="form-check-label" for="nested">📑 Enable Nested Sub-Notes</label>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted d-block mt-1">Nested mode allows multiple sub-sections with headers and descriptions</small>
+                        <div id="nestedWarning" class="alert alert-warning mt-2 mb-0" style="display: none;">
+                            <small>⚠️ Cannot disable nested mode while having multiple sub-notes. Delete sub-notes to have only 1 remaining.</small>
+                        </div>
+                    </div>
+
+                    <!-- Normal Details (shown when nested is disabled) -->
+                    <div class="form-group" id="normalDetailsSection">
+                        <label for="details">Details</label>
+                        <div id="details-editor" style="min-height: 150px;"></div>
+                        <textarea class="form-control" id="details" name="details" style="display: none;"></textarea>
+                        <script th:inline="javascript">
+                            // Set the textarea value with unescaped HTML
+                            /*<![CDATA[*/
+                            document.getElementById('details').value = /*[[${note.details}]]*/ '';
+                            /*]]>*/
+                        </script>
+                    </div>
+
+                    <!-- Sub-notes Section (shown when nested is enabled) -->
+                    <div class="sub-notes-section" id="subNotesSection">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Sub-Notes</h5>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyNoteTitles()" id="copyTitlesBtn" title="Copy note with all sub-notes to clipboard">
+                                    <span>Copy Titles</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllDescriptions()">
+                                    <span id="toggleAllDescText">Expand All</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="bucketsContainer">
+                            <!-- Bucket sections will be rendered here -->
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tagSearch">Tags</label>
+                        <div class="tag-search-container">
+                            <input type="text" id="tagSearch" class="form-control" placeholder="Click to search and select tags..." autocomplete="off">
+                            <div id="tagList" class="tag-list border rounded p-2" style="max-height: 200px; overflow-y: auto; display: none;">
+                                <div th:each="tag : ${allTags}" class="tag-item form-check" th:attr="data-tag-name=${tag.name}">
+                                    <input class="form-check-input tag-checkbox" type="checkbox" 
+                                           th:id="'tag_' + ${tag.id}" 
+                                           th:value="${tag.id}" 
+                                           name="tagIds"
+                                           th:checked="${note.tags != null && note.tags.contains(tag)}">
+                                    <label class="form-check-label" th:for="'tag_' + ${tag.id}" th:text="${tag.name}"></label>
+                                </div>
+                            </div>
+                            <div id="selectedTags" class="mt-2" style="display: none;">
+                                <small class="text-muted">Selected tags:</small>
+                                <div id="selectedTagsContainer"></div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Click the input field to search and select tags.</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Update Note</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden element to pass sub-notes data safely from server to JavaScript -->
+    <script type="application/json" id="subNotesData" th:utext="${subNotesJson}">[]</script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        let subNoteCount = 0;
+        let subNoteEditors = {};
+        let existingSubNotes = [];
+        let initialSubNoteCount = 0;
+        let defaultBucketId = null;
+        let allBuckets = [];
+        
+        function copyNoteTitles() {
+            const titles = [];
+            
+            // Add note name as main title
+            const noteName = document.getElementById('name');
+            if (noteName && noteName.value) {
+                titles.push(noteName.value.trim());
+                titles.push(''); // Empty line after note name
+            }
+            
+            // Get all bucket sections
+            allBuckets.forEach(bucket => {
+                const bucketSection = document.getElementById(`bucket-section-${bucket.id}`);
+                if (!bucketSection) return;
+                
+                const subNotesList = document.getElementById(`subNotesList-${bucket.id}`);
+                if (!subNotesList) return;
+                
+                const subNoteItems = subNotesList.querySelectorAll('.sub-note-item');
+                const subNoteTitles = [];
+                
+                subNoteItems.forEach(item => {
+                    const headerElement = item.querySelector('textarea[name="subNoteHeaders"]');
+                    if (headerElement && headerElement.value) {
+                        let text = headerElement.value.trim();
+                        subNoteTitles.push('  ' + text);
+                    }
+                });
+                
+                // Add to main titles if there are sub-notes in this bucket
+                if (subNoteTitles.length > 0) {
+                    // Get bucket name without count
+                    const legend = bucketSection.querySelector('legend');
+                    let bucketName = legend ? legend.textContent.trim() : bucket.name;
+                    bucketName = bucketName.replace(/\s*\(\d+\)\s*$/, '').trim();
+                    
+                    titles.push(bucketName);
+                    titles.push(...subNoteTitles);
+                    titles.push(''); // Empty line between buckets
+                }
+            });
+            
+            if (titles.length === 0 || (titles.length === 2 && titles[1] === '')) {
+                alert('No sub-notes to copy');
+                return;
+            }
+            
+            // Remove trailing empty lines
+            while (titles[titles.length - 1] === '') {
+                titles.pop();
+            }
+            
+            // Join titles with newlines
+            const textToCopy = titles.join('\n');
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const btn = document.getElementById('copyTitlesBtn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy titles: ' + err);
+            });
+        }
+        
+        // Build available notes options for dropdown
+        let allNotesOptions = '';
+        /*[# th:each="note : ${allNotes}"]*/
+        allNotesOptions += `<option value="/*[[${note.id}]]*/">/*[[${note.name}]]*/</option>`;
+        /*[/]*/
+        
+        // Build bucket options HTML and find default from hidden inputs
+        let allBucketsOptions = '';
+        const bucketInputs = document.querySelectorAll('.bucket-data');
+        bucketInputs.forEach(input => {
+            const bucketId = input.dataset.id;
+            const bucketName = input.dataset.name;
+            const isDefault = input.dataset.isDefault === 'true';
+            
+            allBuckets.push({
+                id: bucketId,
+                name: bucketName,
+                isDefault: isDefault
+            });
+            
+            allBucketsOptions += `<option value="${bucketId}">${bucketName}</option>`;
+            if (isDefault) {
+                defaultBucketId = bucketId;
+            }
+        });
+        
+        // Parse existing sub-notes from Thymeleaf using a safer approach
+        const subNotesDataElement = document.getElementById('subNotesData');
+        if (subNotesDataElement && subNotesDataElement.textContent) {
+            try {
+                const parsed = JSON.parse(subNotesDataElement.textContent);
+                if (Array.isArray(parsed)) {
+                    existingSubNotes = parsed;
+                }
+            } catch (e) {
+                console.error('Error parsing sub-notes data:', e);
+            }
+        }
+        
+        console.log('Existing sub-notes loaded:', existingSubNotes);
+
+        function renderBucketSections() {
+            const bucketsContainer = document.getElementById('bucketsContainer');
+            if (!bucketsContainer) return;
+            
+            bucketsContainer.innerHTML = '';
+            
+            // Get bucket colors from hidden inputs  
+            const bucketDataElements = document.querySelectorAll('.bucket-data');
+            const bucketColors = {};
+            bucketDataElements.forEach(el => {
+                const color = el.getAttribute('data-color') || '#007bff';
+                bucketColors[el.dataset.id] = color;
+            });
+            
+            allBuckets.forEach(bucket => {
+                const fieldset = document.createElement('fieldset');
+                fieldset.className = 'border rounded p-3 mb-3';
+                const bucketColor = bucketColors[bucket.id] || '#007bff';
+                fieldset.style.cssText = `border-color: ${bucketColor} !important; border-width: 2px !important;`;
+                fieldset.id = `bucket-section-${bucket.id}`;
+                
+                const legend = document.createElement('legend');
+                legend.className = 'float-none w-auto px-3 mb-0';
+                legend.style.cssText = `font-size: 1rem; font-weight: 600; color: ${bucketColor};`;
+                legend.id = `bucket-legend-${bucket.id}`;
+                legend.textContent = bucket.name;
+                
+                const subNotesList = document.createElement('div');
+                subNotesList.id = `subNotesList-${bucket.id}`;
+                subNotesList.className = 'sub-notes-list';
+                
+                const addButton = document.createElement('button');
+                addButton.type = 'button';
+                addButton.className = 'btn btn-sm btn-info mt-2';
+                addButton.textContent = '+ Add Sub-Note';
+                addButton.onclick = () => addSubNote(null, bucket.id);
+                
+                fieldset.appendChild(legend);
+                fieldset.appendChild(subNotesList);
+                fieldset.appendChild(addButton);
+                bucketsContainer.appendChild(fieldset);
+            });
+            
+            // Update all bucket counts
+            updateBucketCounts();
+            
+            // Hide empty buckets initially
+            updateEmptyBuckets();
+        }
+        
+        function updateEmptyBuckets() {
+            // Hide or show buckets based on whether they have subnotes
+            // But ensure at least one bucket is visible when in nested mode
+            allBuckets.forEach(bucket => {
+                const bucketSection = document.getElementById(`bucket-section-${bucket.id}`);
+                const subNotesList = document.getElementById(`subNotesList-${bucket.id}`);
+                
+                if (bucketSection && subNotesList) {
+                    const hasSubNotes = subNotesList.querySelectorAll('.sub-note-item').length > 0;
+                    // Show empty buckets in edit mode to allow adding new subnotes
+                    bucketSection.style.display = 'block';
+                }
+            });
+        }
+        
+        function updateBucketCounts() {
+            // Update the count in each bucket legend
+            allBuckets.forEach(bucket => {
+                const subNotesList = document.getElementById(`subNotesList-${bucket.id}`);
+                const legend = document.getElementById(`bucket-legend-${bucket.id}`);
+                
+                if (subNotesList && legend) {
+                    const count = subNotesList.querySelectorAll('.sub-note-item').length;
+                    // Extract the base bucket name (without count)
+                    const baseName = bucket.name.replace(/\s*\(\d+\)\s*$/, '');
+                    legend.textContent = `${baseName} (${count})`;
+                }
+            });
+        }
+
+        function toggleNestedMode() {
+            const nestedCheckbox = document.getElementById('nested');
+            const normalDetailsSection = document.getElementById('normalDetailsSection');
+            const subNotesSection = document.getElementById('subNotesSection');
+            const nestedWarning = document.getElementById('nestedWarning');
+            const nameInput = document.getElementById('name');
+            
+            // Check if trying to disable nested with multiple sub-notes
+            const currentSubNoteCount = document.querySelectorAll('.sub-note-item').length;
+            
+            if (!nestedCheckbox.checked && currentSubNoteCount > 1) {
+                // Prevent disabling
+                nestedCheckbox.checked = true;
+                nestedWarning.style.display = 'block';
+                return;
+            }
+            
+            nestedWarning.style.display = 'none';
+            
+            if (nestedCheckbox.checked) {
+                console.log('Converting to nested mode, subNoteCount:', subNoteCount);
+                normalDetailsSection.style.display = 'none';
+                subNotesSection.classList.add('show');
+                
+                // Always render bucket sections to ensure they're visible
+                renderBucketSections();
+                console.log('Bucket sections rendered');
+                
+                // If converting from normal to nested and no sub-notes exist yet
+                if (subNoteCount === 0) {
+                    console.log('Adding first sub-note during conversion');
+                    // Get the current details content (only details, keep name)
+                    const currentDetails = quill.root.innerHTML;
+                    const currentName = nameInput.value;
+                    
+                    console.log('Current note data:', {name: currentName, hasDetails: !!currentDetails});
+                    
+                    // Create first sub-note with existing note details and assign to default bucket
+                    addSubNote({
+                        id: null,
+                        header: 'Section 1',
+                        description: currentDetails,
+                        bucketId: defaultBucketId
+                    });
+                    
+                    // Clear only the details section, KEEP the name field
+                    quill.setContents([]);
+                    
+                    console.log('First sub-note created with details, name field retained');
+                }
+            } else {
+                console.log('Converting from nested to normal mode');
+                
+                // If there's a sub-note, copy its description back to parent details (not header to name)
+                if (subNoteCount > 0) {
+                    const firstSubNoteIndex = 0;
+                    const descField = document.getElementById(`subNoteDesc-${firstSubNoteIndex}`);
+                    
+                    if (descField) {
+                        const descValue = descField.value || '';
+                        
+                        // Only update details, keep the name field
+                        if (descValue) {
+                            quill.root.innerHTML = descValue;
+                        } else {
+                            quill.setContents([]);
+                        }
+                        console.log('Copied first sub-note details back to parent, name field retained');
+                    }
+                }
+                
+                normalDetailsSection.style.display = 'block';
+                subNotesSection.classList.remove('show');
+            }
+        }
+
+        function addSubNote(existingData = null, targetBucketId = null) {
+            const index = subNoteCount++;
+            
+            const headerValue = existingData && existingData.header ? existingData.header.replace(/"/g, '&quot;') : '';
+            const descValue = existingData && existingData.description ? existingData.description : '';
+            const subNoteId = existingData && existingData.id ? existingData.id : '';
+            const linkedNoteId = existingData && existingData.linkedNoteId ? existingData.linkedNoteId : '';
+            const bucketId = existingData && existingData.bucketId ? existingData.bucketId : (targetBucketId || defaultBucketId || '');
+            const hasDescription = descValue && descValue.trim() !== '' && descValue !== '<p><br></p>';
+            const isLinked = linkedNoteId && linkedNoteId !== 'null' && linkedNoteId !== '';
+            
+            // Determine which bucket section to add to
+            const subNotesList = document.getElementById(`subNotesList-${bucketId}`);
+            
+            // Find linked note name if exists
+            let linkedNoteName = '';
+            if (isLinked && allNotesOptions) {
+                const match = allNotesOptions.match(new RegExp(`<option value="${linkedNoteId}">([^<]+)</option>`));
+                if (match) linkedNoteName = match[1];
+            }
+            
+            const subNoteHtml = `
+                <div class="sub-note-item ${isLinked ? 'linked' : ''}" id="subNote-${index}" data-index="${index}">
+                    ${subNoteId ? `<input type="hidden" name="subNoteIds" value="${subNoteId}">` : '<input type="hidden" name="subNoteIds" value="">'}
+                    <input type="hidden" name="subNoteLinkedNoteIds" id="linkedNoteId-${index}" value="${linkedNoteId || ''}">
+                    
+                    <!-- Controls row matching view page layout -->
+                    <div class="sub-note-controls-row">
+                        <!-- Header textarea -->
+                        <div class="sub-note-field-group header-field">
+                            <textarea class="form-control" id="subNoteHeader-${index}" 
+                                   name="subNoteHeaders" required placeholder="Enter section title"
+                                   rows="1" style="resize: none; overflow: hidden; min-height: auto;" ${isLinked ? 'readonly' : ''}>${headerValue}</textarea>
+                        </div>
+                        
+                        <!-- Actions group (bucket, toggle, delete) -->
+                        <div class="sub-note-actions">
+                            <!-- Bucket dropdown -->
+                            <select class="form-select" name="subNoteBucketIds" id="bucketId-${index}">
+                            </select>
+                            
+                            <!-- Description toggle button -->
+                            <button type="button" class="toggle-description-btn" onclick="toggleDescription(${index})" 
+                                    id="toggleBtn-${index}" title="Toggle description editor" style="${isLinked ? 'display: none;' : ''}">▼</button>
+                            
+                            <!-- Remove button -->
+                            <span class="remove-sub-note" onclick="removeSubNote(${index})" title="Remove sub-note">&times;</span>
+                        </div>
+                    </div>
+                    
+                    ${isLinked ? `
+                    <div class="linked-note-info">
+                        <div>
+                            🔗 Linked to: <strong>${linkedNoteName}</strong>
+                        </div>
+                        <a href="/notes/${linkedNoteId}/edit" target="_blank">✏️ Edit Linked Note</a>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- Description Section (hidden for linked notes) -->
+                    <div class="sub-note-description-section" id="descSection-${index}" style="display: ${isLinked ? 'none' : ''};">
+                        <label class="sub-note-control-label" style="margin-top: 0.5rem; margin-bottom: 0.25rem;">Description</label>
+                        <div id="subNoteDesc-editor-${index}" style="min-height: 80px; max-height: 300px; border-radius: 6px; overflow: hidden;"></div>
+                        <textarea class="form-control sub-note-description-field" 
+                                  id="subNoteDesc-${index}" 
+                                  name="subNoteDescriptions" 
+                                  style="display: none;"></textarea>
+                    </div>
+                </div>
+            `;
+            
+            if (subNotesList) {
+                subNotesList.insertAdjacentHTML('beforeend', subNoteHtml);
+            }
+            
+            // Populate bucket dropdown options
+            const bucketSelect = document.getElementById(`bucketId-${index}`);
+            if (bucketSelect) {
+                bucketSelect.innerHTML = allBucketsOptions;
+                
+                // Set the bucket ID selection (use default if bucketId is null or undefined)
+                const finalBucketId = bucketId || defaultBucketId;
+                if (finalBucketId) {
+                    bucketSelect.value = finalBucketId;
+                }
+                
+                // Add onchange event to move subnote between buckets
+                bucketSelect.addEventListener('change', function() {
+                    moveSubNoteToBucketSection(index, this.value);
+                });
+            }
+            
+            // Initialize Quill editor for this sub-note (only if not linked)
+            if (!isLinked) {
+                // Ensure the container exists before initializing Quill
+                const editorContainer = document.getElementById(`subNoteDesc-editor-${index}`);
+                if (editorContainer) {
+                    const quillEditor = new Quill(`#subNoteDesc-editor-${index}`, {
+                        theme: 'snow',
+                        modules: {
+                            toolbar: [
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                ['clean', 'link']
+                            ]
+                        }
+                    });
+                    
+                    // Set existing content if available
+                    if (descValue && quillEditor && quillEditor.root) {
+                        quillEditor.root.innerHTML = descValue;
+                        document.getElementById(`subNoteDesc-${index}`).value = descValue;
+                    }
+                    
+                    subNoteEditors[index] = quillEditor;
+                    
+                    // Auto-resize function for sub-note Quill editor
+                    function resizeSubNoteEditor() {
+                        const editor = quillEditor.root;
+                        const container = editor.parentElement;
+                        const scrollHeight = editor.scrollHeight;
+                        const minHeight = 80;
+                        const maxHeight = 300;
+                        
+                        let newHeight = Math.max(minHeight, Math.min(maxHeight, scrollHeight + 10));
+                        if (container) {
+                            container.style.height = newHeight + 'px';
+                        }
+                    }
+                    
+                    // Sync with hidden textarea
+                    quillEditor.on('text-change', function() {
+                        document.getElementById(`subNoteDesc-${index}`).value = quillEditor.root.innerHTML;
+                        setTimeout(resizeSubNoteEditor, 0); // Delay to ensure content is rendered
+                        checkForChanges();
+                    });
+                    
+                    // Initial resize after content is loaded
+                    setTimeout(resizeSubNoteEditor, 100);
+                }
+            } else {
+                // For linked subnotes, clear the description textarea
+                const descTextarea = document.getElementById(`subNoteDesc-${index}`);
+                if (descTextarea) {
+                    descTextarea.value = '';
+                }
+            }
+            
+            // Auto-resize header textarea
+            const headerElement = document.getElementById(`subNoteHeader-${index}`);
+            if (headerElement && !isLinked && headerElement.tagName === 'TEXTAREA') {
+                // Auto-resize on input
+                headerElement.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = Math.min(150, this.scrollHeight) + 'px';
+                });
+                // Set initial height
+                setTimeout(() => {
+                    headerElement.style.height = 'auto';
+                    headerElement.style.height = Math.min(150, headerElement.scrollHeight) + 'px';
+                }, 0);
+            }
+            
+            updateEmptyBuckets();
+            updateBucketCounts();
+            checkForChanges();
+        }
+
+        function removeSubNote(index) {
+            if (!confirm('Are you sure you want to delete this sub-note?')) {
+                return;
+            }
+            
+            const currentSubNoteCount = document.querySelectorAll('.sub-note-item').length;
+            const nestedCheckbox = document.getElementById('nested');
+            const nestedWarning = document.getElementById('nestedWarning');
+            
+            // Check if trying to remove sub-note that would allow disabling nested
+            if (currentSubNoteCount <= 2 && nestedCheckbox.checked) {
+                nestedWarning.style.display = 'none';
+            }
+            
+            const subNote = document.getElementById(`subNote-${index}`);
+            if (subNote) {
+                subNote.remove();
+                delete subNoteEditors[index];
+                updateEmptyBuckets();
+                updateBucketCounts();
+                checkForChanges();
+            }
+        }
+        
+        function moveSubNoteToBucketSection(subNoteIndex, newBucketId) {
+            const subNoteElement = document.getElementById(`subNote-${subNoteIndex}`);
+            if (!subNoteElement) return;
+            
+            const newBucketList = document.getElementById(`subNotesList-${newBucketId}`);
+            if (!newBucketList) return;
+            
+            // Move the element
+            newBucketList.appendChild(subNoteElement);
+            updateEmptyBuckets();
+            updateBucketCounts();
+            checkForChanges();
+        }
+        
+        function toggleDescription(index) {
+            const descSection = document.getElementById(`descSection-${index}`);
+            const toggleBtn = document.getElementById(`toggleBtn-${index}`);
+            
+            if (descSection.classList.contains('show')) {
+                descSection.classList.remove('show');
+                toggleBtn.classList.remove('expanded');
+                toggleBtn.textContent = '▼';
+            } else {
+                descSection.classList.add('show');
+                toggleBtn.classList.add('expanded');
+                toggleBtn.textContent = '▼';
+            }
+        }
+        
+        function toggleAllDescriptions() {
+            const allDescSections = document.querySelectorAll('.sub-note-description-section');
+            const allToggleBtns = document.querySelectorAll('.toggle-description-btn');
+            const toggleAllText = document.getElementById('toggleAllDescText');
+            
+            const anyExpanded = Array.from(allDescSections).some(section => section.classList.contains('show'));
+            
+            allDescSections.forEach((section, idx) => {
+                if (anyExpanded) {
+                    // Collapse all
+                    section.classList.remove('show');
+                } else {
+                    // Expand only sections with content
+                    const textarea = section.querySelector('textarea[name="subNoteDescriptions"]');
+                    if (textarea && textarea.value && textarea.value.trim() !== '' && textarea.value !== '<p><br></p>') {
+                        section.classList.add('show');
+                    }
+                }
+            });
+            
+            allToggleBtns.forEach((btn, idx) => {
+                if (anyExpanded) {
+                    btn.classList.remove('expanded');
+                    btn.textContent = '▼';
+                } else {
+                    // Only show expanded state for buttons with content
+                    const section = btn.closest('.sub-note-item')?.querySelector('.sub-note-description-section');
+                    const textarea = section?.querySelector('textarea[name="subNoteDescriptions"]');
+                    if (textarea && textarea.value && textarea.value.trim() !== '' && textarea.value !== '<p><br></p>') {
+                        btn.classList.add('expanded');
+                        btn.textContent = '▼';
+                    }
+                }
+            });
+            
+            toggleAllText.textContent = anyExpanded ? 'Expand All' : 'Collapse All';
+            
+            // Trigger resize for all visible editors
+            setTimeout(() => {
+                Object.values(subNoteEditors).forEach(editor => {
+                    if (editor && editor.root && editor.root.parentElement) {
+                        const scrollHeight = editor.root.scrollHeight;
+                        const minHeight = 80;
+                        const maxHeight = 300;
+                        let newHeight = Math.max(minHeight, Math.min(maxHeight, scrollHeight + 10));
+                        editor.root.parentElement.style.height = newHeight + 'px';
+                    }
+                });
+            }, 50);
+        }
+        
+        // Tag search functionality
+        function initializeTagSearch() {
+            const tagSearchInput = document.getElementById('tagSearch');
+            const tagList = document.getElementById('tagList');
+            const tagItems = document.querySelectorAll('.tag-item');
+            const tagCheckboxes = document.querySelectorAll('.tag-checkbox');
+            const selectedTagsDiv = document.getElementById('selectedTags');
+            const selectedTagsContainer = document.getElementById('selectedTagsContainer');
+            
+            // Show dropdown when input is focused
+            tagSearchInput.addEventListener('focus', function() {
+                tagList.classList.add('show');
+                tagList.style.display = 'block';
+            });
+            
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('.tag-search-container')) {
+                    tagList.classList.remove('show');
+                    tagList.style.display = 'none';
+                }
+            });
+            
+            // Filter tags based on search input
+            tagSearchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                
+                tagItems.forEach(item => {
+                    const tagName = item.getAttribute('data-tag-name').toLowerCase();
+                    if (tagName.includes(searchTerm)) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+            });
+            
+            // Update selected tags display
+            function updateSelectedTags() {
+                const selectedCheckboxes = document.querySelectorAll('.tag-checkbox:checked');
+                selectedTagsContainer.innerHTML = '';
+                
+                if (selectedCheckboxes.length > 0) {
+                    selectedTagsDiv.style.display = 'block';
+                    selectedCheckboxes.forEach(checkbox => {
+                        const label = document.querySelector(`label[for="${checkbox.id}"]`);
+                        const tagName = label.textContent;
+                        
+                        const tagElement = document.createElement('div');
+                        tagElement.className = 'selected-tag';
+                        tagElement.innerHTML = `
+                            ${tagName}
+                            <span class="remove" data-tag-id="${checkbox.value}">&times;</span>
+                        `;
+                        selectedTagsContainer.appendChild(tagElement);
+                    });
+                } else {
+                    selectedTagsDiv.style.display = 'none';
+                }
+            }
+            
+            // Handle tag selection
+            tagCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    updateSelectedTags();
+                    checkForChanges();
+                });
+            });
+            
+            // Handle tag removal from selected tags
+            selectedTagsContainer.addEventListener('click', function(event) {
+                if (event.target.classList.contains('remove')) {
+                    const tagId = event.target.getAttribute('data-tag-id');
+                    const checkbox = document.querySelector(`input[value="${tagId}"]`);
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        updateSelectedTags();
+                        checkForChanges();
+                    }
+                }
+            });
+            
+            // Initialize selected tags display for edit mode
+            updateSelectedTags();
+        }
+
+        // Track changes in the form
+        let hasUnsavedChanges = false;
+        let originalFormData = {};
+        let quill, nameInput; // Global references
+        
+        // Check for changes function - global scope so it can be called from anywhere
+        function checkForChanges() {
+            if (!quill || !nameInput) return; // Safety check
+            
+            const currentSelectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
+            const editorContent = quill.root.innerHTML;
+            const currentData = {
+                name: nameInput.value,
+                details: editorContent,
+                tags: currentSelectedTags.join(',')
+            };
+            
+            hasUnsavedChanges = (currentData.name !== originalFormData.name || 
+                               currentData.details !== originalFormData.details ||
+                               currentData.tags !== originalFormData.tags);
+        }
+
+        // Initialize auto-expand for all textarea elements
+        function initializeAllTextareaAutoExpand() {
+            const textareas = document.querySelectorAll('textarea[name="subNoteHeaders"]');
+            textareas.forEach(textarea => {
+                if (textarea.value && textarea.value.length > 0) {
+                    // Set initial height based on content
+                    textarea.style.height = 'auto';
+                    textarea.style.height = Math.min(200, textarea.scrollHeight) + 'px';
+                }
+                // Add input listener for future changes
+                textarea.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = Math.min(200, this.scrollHeight) + 'px';
+                });
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.getElementById('details');
+            nameInput = document.getElementById('name'); // Assign to global
+            const form = document.querySelector('form');
+            const nestedCheckbox = document.getElementById('nested');
+            
+            // Initialize Quill.js
+            quill = new Quill('#details-editor', { // Assign to global
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        ['blockquote', 'code-block'],
+                        [{ 'header': 1 }, { 'header': 2 }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'script': 'sub'}, { 'script': 'super' }],
+                        [{ 'indent': '-1'}, { 'indent': '+1' }],
+                        [{ 'direction': 'rtl' }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'font': [] }],
+                        [{ 'align': [] }],
+                        ['clean', 'link']
+                    ]
+                }
+            });
+            
+            // Set initial content from textarea
+            if (textarea.value) {
+                quill.root.innerHTML = textarea.value;
+            }
+            
+            // Store original form values including selected tags
+            const originalSelectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
+            originalFormData = {
+                name: nameInput.value,
+                details: quill.root.innerHTML,
+                tags: originalSelectedTags.join(',')
+            };
+            
+            // Auto-resize function for Quill editor
+            function resizeEditor() {
+                const editor = quill.root;
+                const container = editor.parentElement;
+                const scrollHeight = editor.scrollHeight;
+                const minHeight = 150;
+                const maxHeight = 500; // Scrollable if content exceeds this
+                
+                let newHeight = Math.max(minHeight, Math.min(maxHeight, scrollHeight + 20));
+                editor.style.height = newHeight + 'px';
+                editor.style.overflowY = newHeight >= maxHeight ? 'auto' : 'hidden';
+                container.style.height = 'auto';
+            }
+            
+            // Sync Quill content with hidden textarea and resize
+            quill.on('text-change', function() {
+                textarea.value = quill.root.innerHTML;
+                setTimeout(resizeEditor, 0); // Delay to ensure content is rendered
+                checkForChanges();
+            });
+            
+            // Initial resize after content is loaded
+            setTimeout(resizeEditor, 100);
+            
+            // Load existing sub-notes if in nested mode
+            if (nestedCheckbox.checked) {
+                normalDetailsSection.style.display = 'none';
+                subNotesSection.classList.add('show');
+                
+                // Render bucket sections first
+                renderBucketSections();
+                
+                if (existingSubNotes && existingSubNotes.length > 0) {
+                    initialSubNoteCount = existingSubNotes.length;
+                    existingSubNotes.forEach(subNote => {
+                        addSubNote(subNote);
+                    });
+                    // Initialize auto-expand for all textareas
+                    setTimeout(initializeAllTextareaAutoExpand, 100);
+                } else if (subNoteCount === 0) {
+                    // If nested is enabled but no sub-notes exist, add first one
+                    const currentDetails = quill.root.innerHTML;
+                    const currentName = nameInput.value;
+                    addSubNote({
+                        id: null,
+                        header: currentName || 'Section 1',
+                        description: currentDetails
+                    });
+                    // Initialize auto-expand for all textareas
+                    setTimeout(initializeAllTextareaAutoExpand, 100);
+                }
+            }
+            
+            // Initialize tag search functionality
+            initializeTagSearch();
+            
+            if (nameInput) {
+                nameInput.addEventListener('input', checkForChanges);
+            }
+            
+            // ESC key navigation with change detection
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    if (hasUnsavedChanges) {
+                        const confirmLeave = confirm('You have unsaved changes. Are you sure you want to leave? All changes will be lost.');
+                        if (confirmLeave) {
+                            window.location.href = '/notes';
+                        }
+                    } else {
+                        window.location.href = '/notes';
+                    }
+                }
+            });
+            
+            // Prevent accidental page leave with unsaved changes
+            window.addEventListener('beforeunload', function(event) {
+                if (hasUnsavedChanges) {
+                    event.preventDefault();
+                    event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                    return event.returnValue;
+                }
+            });
+            
+            // Clear the unsaved changes flag when form is submitted
+            form.addEventListener('submit', function() {
+                hasUnsavedChanges = false;
+            });
+        });
+    </script>
+</body>
+</html>
+
