@@ -47,6 +47,7 @@ public class BucketController {
         Map<Long, List<SubNote>> bucketSubNotes = new HashMap<>();
         Map<Long, Note> parentNotes = new HashMap<>();
         Map<Long, Map<Long, List<SubNote>>> bucketNoteSubNotes = new HashMap<>(); // bucket -> note -> subnotes
+        Map<Long, List<Note>> bucketNotes = new HashMap<>(); // bucket -> notes (no sub-notes)
         
         for (Bucket bucket : buckets) {
             List<SubNote> subNotes = subNoteRepository.findAllByBucketId(bucket.getId());
@@ -60,6 +61,22 @@ public class BucketController {
             
             // Group subnotes by parent note for grouped view
             Map<Long, List<SubNote>> noteSubNotesMap = new HashMap<>();
+
+            // Ensure notes without subnotes still show up in grouped view
+            List<Note> notesInBucket = noteService.findByBucketId(bucket.getId());
+            List<Note> noteOnly = new java.util.ArrayList<>();
+            for (Note note : notesInBucket) {
+                if (note != null && (note.getDeleted() == null || !note.getDeleted())) {
+                    parentNotes.putIfAbsent(note.getId(), note);
+                    noteSubNotesMap.putIfAbsent(note.getId(), new java.util.ArrayList<>());
+
+                    // Keep only non-nested notes for flat view
+                    if (!note.isNested()) {
+                        noteOnly.add(note);
+                    }
+                }
+            }
+            bucketNotes.put(bucket.getId(), noteOnly);
             
             // Get parent notes for each subnote
             for (SubNote subNote : activeSubNotes) {
@@ -80,6 +97,7 @@ public class BucketController {
         model.addAttribute("buckets", buckets);
         model.addAttribute("bucketSubNotes", bucketSubNotes);
         model.addAttribute("bucketNoteSubNotes", bucketNoteSubNotes);
+        model.addAttribute("bucketNotes", bucketNotes);
         model.addAttribute("parentNotes", parentNotes);
         model.addAttribute("groupByNote", groupByNote);
         

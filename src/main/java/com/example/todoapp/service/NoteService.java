@@ -112,6 +112,13 @@ public class NoteService {
         return noteRepository.findByTagName(tagName);
     }
 
+    public List<Note> findByBucketId(Long bucketId) {
+        if (bucketId == null) {
+            return Collections.emptyList();
+        }
+        return noteRepository.findByBucketId(bucketId);
+    }
+
     public Note saveWithTags(Note note, Set<String> tagNames) {
         if (tagNames != null && !tagNames.isEmpty()) {
             Set<Tag> tags = tagService.findOrCreateTags(tagNames);

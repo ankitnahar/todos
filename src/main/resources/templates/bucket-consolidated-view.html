@@ -324,6 +324,29 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            min-width: 320px;
+        }
+
+        .sub-note-actions .track-subnote-btn {
+            width: 32px;
+            height: 28px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sub-note-actions .bucket-selector {
+            width: 140px;
+        }
+
+        .sub-note-actions .action-right {
+            margin-left: auto;
+        }
+
+        .sub-note-actions .action-right .btn,
+        .sub-note-actions .action-right.btn {
+            min-width: 96px;
         }
         
         .sub-note-toggle {
@@ -363,6 +386,10 @@
             background-color: transparent;
             border-color: transparent;
             color: #28a745;
+        }
+
+        .note-only-actions .view-note-btn {
+            margin-left: auto;
         }
         
         .bucket-count-summary {
@@ -502,14 +529,14 @@
         <div id="bucketCountSummary" class="bucket-count-summary"></div>
         
         <div th:each="bucket : ${buckets}" class="mb-4">
-            <th:block th:with="subNotes=${bucketSubNotes.get(bucket.id)}">
-                <fieldset th:if="${subNotes != null && !subNotes.isEmpty()}" 
+            <th:block th:with="subNotes=${bucketSubNotes.get(bucket.id)}, noteSubNotesMap=${bucketNoteSubNotes.get(bucket.id)}, noteOnlyNotes=${bucketNotes.get(bucket.id)}">
+                <fieldset th:if="${(groupByNote && noteSubNotesMap != null && !noteSubNotesMap.isEmpty()) || (!groupByNote && ((subNotes != null && !subNotes.isEmpty()) || (noteOnlyNotes != null && !noteOnlyNotes.isEmpty()))) }" 
                           class="border rounded p-3 mb-4 bucket-fieldset" 
                           th:attr="data-bucket-id=${bucket.id}"
                           th:style="'border-color: ' + ${bucket.color} + ' !important; border-width: 2px !important;'">
                     <legend class="float-none w-auto px-3 mb-0" 
                             th:style="'font-size: 1rem; font-weight: 600; color: ' + ${bucket.color} + ';'" 
-                            th:text="${bucket.name} + ' (' + ${subNotes.size()} + ')'">Bucket Name</legend>
+                            th:text="${bucket.name} + ' (' + ${groupByNote ? noteSubNotesMap.size() : (subNotes.size() + (noteOnlyNotes != null ? noteOnlyNotes.size() : 0))} + ')'">Bucket Name</legend>
                     
                     <div class="mb-2" style="padding: 0 0.5rem;">
                         <button class="btn btn-sm btn-outline-secondary expand-all-btn" th:onclick="'toggleAllInBucket(' + ${bucket.id} + ')'">
@@ -519,7 +546,7 @@
                     
                     <!-- Grouped by Note View -->
                     <div th:if="${groupByNote}" class="sub-notes-container">
-                        <th:block th:with="noteSubNotesMap=${bucketNoteSubNotes.get(bucket.id)}">
+                        <th:block>
                             <div th:each="noteEntry : ${noteSubNotesMap}" class="note-group">
                                 <div class="note-group-header" th:data-isFavorite="${parentNotes.get(noteEntry.key).favorite}">
                                     <span class="note-group-title">
@@ -563,7 +590,7 @@
                                                         th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                                             </select>
                                             <form th:action="@{/notes/{noteId}/subnote/convert/{subNoteId}(noteId=${subNote.note.id},subNoteId=${subNote.id})}" 
-                                                  method="post" style="display: inline;" 
+                                                  method="post" style="display: inline;" class="action-right"
                                                   th:onsubmit="'return confirm(\'Convert this sub-note to a main note?\')'">
                                                 <button type="submit" class="btn btn-sm btn-success" 
                                                         onclick="event.stopPropagation()" 
@@ -572,6 +599,11 @@
                                                     ⬆️ Convert
                                                 </button>
                                             </form>
+                                            <a th:if="${subNote.linkedNoteId != null}"
+                                               th:href="@{/notes/{id}(id=${subNote.linkedNoteId})}"
+                                               class="btn btn-sm btn-outline-primary action-right"
+                                               target="_blank"
+                                               rel="noopener noreferrer">View Note</a>
                                             <span class="sub-note-toggle" 
                                                   th:id="'toggle-' + ${subNote.id}"
                                                   th:style="${(subNote.description == null || #strings.isEmpty(#strings.trim(subNote.description)) || subNote.description == '<p><br></p>') && subNote.linkedNoteId == null} ? 'visibility: hidden;' : ''">▼</span>
@@ -583,6 +615,50 @@
                                          th:id="'desc-' + ${subNote.id}">
                                         <div th:id="'viewer-' + ${subNote.id}" style="min-height: 30px;"></div>
                                         <textarea th:id="'content-' + ${subNote.id}" style="display: none;" th:text="${subNote.description}"></textarea>
+                                    </div>
+                                </div>
+
+                                <div th:if="${noteEntry.value == null || noteEntry.value.isEmpty()}" 
+                                     class="sub-note-item note-only-item"
+                                     th:classappend="${parentNotes.get(noteEntry.key).lastTrackedDate != null && #temporals.format(parentNotes.get(noteEntry.key).lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
+                                     th:data-parentisfavorite="${parentNotes.get(noteEntry.key).favorite}"
+                                     data-note-only="true">
+                                    <div class="sub-note-header"
+                                         th:onclick="${parentNotes.get(noteEntry.key).details != null && !#strings.isEmpty(#strings.trim(parentNotes.get(noteEntry.key).details)) && parentNotes.get(noteEntry.key).details != '<p><br></p>'} ? 'toggleNoteDescription(' + ${noteEntry.key} + ')' : ''">
+                                        <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
+                                            <span>No sub-notes</span>
+                                            <span class="linked-note-badge" style="background-color: #6c757d;">NOTE</span>
+                                        </h6>
+                                        <div class="sub-note-actions note-only-actions">
+                                            <button th:class="${'btn btn-sm track-subnote-btn ' + (parentNotes.get(noteEntry.key).lastTrackedDate != null && #temporals.format(parentNotes.get(noteEntry.key).lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
+                                                    th:attr="data-note-id=${noteEntry.key}"
+                                                    onclick="toggleTrackNote(this, event)"
+                                                    title="Track for Today">
+                                                <span th:if="${parentNotes.get(noteEntry.key).lastTrackedDate != null && #temporals.format(parentNotes.get(noteEntry.key).lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
+                                                <span th:unless="${parentNotes.get(noteEntry.key).lastTrackedDate != null && #temporals.format(parentNotes.get(noteEntry.key).lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                            </button>
+                                            <select class="form-select form-select-sm bucket-selector" 
+                                                    th:data-note-id="${noteEntry.key}"
+                                                    onchange="moveNoteToBucket(this)" 
+                                                    onclick="event.stopPropagation()"
+                                                    style="width: auto; display: inline-block; margin-right: 0.5rem;">
+                                                <option th:each="b : ${buckets}" 
+                                                        th:value="${b.id}" 
+                                                        th:text="${b.name}"
+                                                        th:selected="${b.id.equals(bucket.id)}"
+                                                        th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
+                                            </select>
+                                            <span class="sub-note-toggle" 
+                                                  th:id="'note-toggle-' + ${noteEntry.key}"
+                                                  th:style="${(parentNotes.get(noteEntry.key).details == null || #strings.isEmpty(#strings.trim(parentNotes.get(noteEntry.key).details)) || parentNotes.get(noteEntry.key).details == '<p><br></p>')} ? 'visibility: hidden;' : ''">▼</span>
+                                        </div>
+                                    </div>
+
+                                    <div th:if="${parentNotes.get(noteEntry.key).details != null && !#strings.isEmpty(#strings.trim(parentNotes.get(noteEntry.key).details)) && parentNotes.get(noteEntry.key).details != '<p><br></p>'}"
+                                         class="sub-note-description description-hidden"
+                                         th:id="'note-desc-' + ${noteEntry.key}">
+                                        <div th:id="'viewer-note-' + ${noteEntry.key}" style="min-height: 30px;"></div>
+                                        <textarea th:id="'content-note-' + ${noteEntry.key}" style="display: none;" th:text="${parentNotes.get(noteEntry.key).details}"></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -630,7 +706,7 @@
                                                 th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                                     </select>
                                     <form th:action="@{/notes/{noteId}/subnote/convert/{subNoteId}(noteId=${subNote.note.id},subNoteId=${subNote.id})}" 
-                                          method="post" style="display: inline;" 
+                                          method="post" style="display: inline;" class="action-right"
                                           th:onsubmit="'return confirm(\'Convert this sub-note to a main note?\')'">
                                         <button type="submit" class="btn btn-sm btn-success" 
                                                 onclick="event.stopPropagation()" 
@@ -639,6 +715,11 @@
                                             ⬆️ Convert
                                         </button>
                                     </form>
+                                    <a th:if="${subNote.linkedNoteId != null}"
+                                       th:href="@{/notes/{id}(id=${subNote.linkedNoteId})}"
+                                       class="btn btn-sm btn-outline-primary action-right"
+                                       target="_blank"
+                                       rel="noopener noreferrer">View Note</a>
                                     <span class="sub-note-toggle" 
                                           th:id="'toggle-' + ${subNote.id}"
                                           th:style="${(subNote.description == null || #strings.isEmpty(#strings.trim(subNote.description)) || subNote.description == '<p><br></p>') && subNote.linkedNoteId == null} ? 'visibility: hidden;' : ''">▼</span>
@@ -650,6 +731,50 @@
                                  th:id="'desc-' + ${subNote.id}">
                                 <div th:id="'viewer-' + ${subNote.id}" style="min-height: 30px;"></div>
                                 <textarea th:id="'content-' + ${subNote.id}" style="display: none;" th:text="${subNote.description}"></textarea>
+                            </div>
+                        </div>
+
+                        <div th:each="note : ${noteOnlyNotes}" 
+                             class="sub-note-item note-only-item"
+                             th:classappend="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
+                             th:data-parentisfavorite="${note.favorite}"
+                             data-note-only="true">
+                            <div class="sub-note-header"
+                                 th:onclick="${note.details != null && !#strings.isEmpty(#strings.trim(note.details)) && note.details != '<p><br></p>'} ? 'toggleNoteDescription(' + ${note.id} + ')' : ''">
+                                <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
+                                    📝 <span th:text="${note.name}">Note Name</span>
+                                    <span class="linked-note-badge" style="background-color: #6c757d;">NOTE</span>
+                                </h6>
+                                <div class="sub-note-actions note-only-actions">
+                                    <button th:class="${'btn btn-sm track-subnote-btn ' + (note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
+                                            th:attr="data-note-id=${note.id}"
+                                            onclick="toggleTrackNote(this, event)"
+                                            title="Track for Today">
+                                        <span th:if="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
+                                        <span th:unless="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                    </button>
+                                    <select class="form-select form-select-sm bucket-selector" 
+                                            th:data-note-id="${note.id}"
+                                            onchange="moveNoteToBucket(this)" 
+                                            onclick="event.stopPropagation()"
+                                            style="width: auto; display: inline-block; margin-right: 0.5rem;">
+                                        <option th:each="b : ${buckets}" 
+                                                th:value="${b.id}" 
+                                                th:text="${b.name}"
+                                                th:selected="${b.id.equals(bucket.id)}"
+                                                th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
+                                    </select>
+                                    <span class="sub-note-toggle" 
+                                          th:id="'note-toggle-' + ${note.id}"
+                                          th:style="${(note.details == null || #strings.isEmpty(#strings.trim(note.details)) || note.details == '<p><br></p>')} ? 'visibility: hidden;' : ''">▼</span>
+                                </div>
+                            </div>
+
+                            <div th:if="${note.details != null && !#strings.isEmpty(#strings.trim(note.details)) && note.details != '<p><br></p>'}"
+                                 class="sub-note-description description-hidden"
+                                 th:id="'note-desc-' + ${note.id}">
+                                <div th:id="'viewer-note-' + ${note.id}" style="min-height: 30px;"></div>
+                                <textarea th:id="'content-note-' + ${note.id}" style="display: none;" th:text="${note.details}"></textarea>
                             </div>
                         </div>
                     </div>
@@ -670,13 +795,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             const textareas = document.querySelectorAll('[id^="content-"]');
             textareas.forEach(textarea => {
-                const id = textarea.id.replace('content-', '');
                 const content = textarea.value;
-                
-                if (content && content.trim() !== '' && content !== '<p><br></p>') {
-                    const viewerDiv = document.getElementById('viewer-' + id);
+                if (!content || content.trim() === '' || content === '<p><br></p>') {
+                    return;
+                }
+
+                if (textarea.id.startsWith('content-note-')) {
+                    const id = textarea.id.replace('content-note-', '');
+                    const viewerDiv = document.getElementById('viewer-note-' + id);
                     if (viewerDiv) {
-                        const quill = new Quill('#viewer-' + id, {
+                        const quill = new Quill('#viewer-note-' + id, {
                             theme: 'snow',
                             readOnly: true,
                             modules: {
@@ -685,6 +813,20 @@
                         });
                         quill.root.innerHTML = content;
                     }
+                    return;
+                }
+
+                const id = textarea.id.replace('content-', '');
+                const viewerDiv = document.getElementById('viewer-' + id);
+                if (viewerDiv) {
+                    const quill = new Quill('#viewer-' + id, {
+                        theme: 'snow',
+                        readOnly: true,
+                        modules: {
+                            toolbar: false
+                        }
+                    });
+                    quill.root.innerHTML = content;
                 }
             });
         });
@@ -723,11 +865,58 @@
                 selectElement.selectedIndex = originalIndex;
             });
         }
+
+        function moveNoteToBucket(selectElement) {
+            const noteId = selectElement.dataset.noteId;
+            const newBucketId = selectElement.value;
+            const originalIndex = selectElement.selectedIndex;
+
+            if (!confirm('Move this note to the selected bucket?')) {
+                selectElement.selectedIndex = Array.from(selectElement.options).findIndex(opt =>
+                    opt.hasAttribute('selected') && opt.getAttribute('selected') === 'selected'
+                );
+                return;
+            }
+
+            fetch(`/notes/${noteId}/move-bucket?bucketId=${newBucketId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Failed to move note: ' + (data.message || 'Unknown error'));
+                    selectElement.selectedIndex = originalIndex;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while moving the note');
+                selectElement.selectedIndex = originalIndex;
+            });
+        }
         
         function toggleDescription(subNoteId) {
             const descDiv = document.getElementById('desc-' + subNoteId);
             const toggleBtn = document.getElementById('toggle-' + subNoteId);
             
+            if (descDiv.classList.contains('description-hidden')) {
+                descDiv.classList.remove('description-hidden');
+                toggleBtn.textContent = '▲';
+            } else {
+                descDiv.classList.add('description-hidden');
+                toggleBtn.textContent = '▼';
+            }
+        }
+
+        function toggleNoteDescription(noteId) {
+            const descDiv = document.getElementById('note-desc-' + noteId);
+            const toggleBtn = document.getElementById('note-toggle-' + noteId);
+
             if (descDiv.classList.contains('description-hidden')) {
                 descDiv.classList.remove('description-hidden');
                 toggleBtn.textContent = '▲';
@@ -889,6 +1078,70 @@
                 button.disabled = false;
             });
         }
+
+        function toggleTrackNote(button, event) {
+            event.stopPropagation();
+            const noteId = button.getAttribute('data-note-id');
+            const isCurrentlyTracked = button.classList.contains('active');
+            const endpoint = isCurrentlyTracked ? 'untrack-today' : 'track-today';
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+
+            button.disabled = true;
+
+            fetch(`/api/notes/${noteId}/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(csrfToken && csrfHeader ? { [csrfHeader]: csrfToken } : {})
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const noteItem = button.closest('.sub-note-item');
+                    const isUntrackedFilter = document.getElementById('untrackedOnly')?.checked;
+
+                    if (isCurrentlyTracked) {
+                        button.classList.remove('active');
+                        noteItem.classList.remove('tracked-today');
+                        button.innerHTML = '📌';
+                    } else {
+                        button.classList.add('active');
+                        noteItem.classList.add('tracked-today');
+                        button.innerHTML = '✅';
+
+                        if (isUntrackedFilter) {
+                            noteItem.style.display = 'none';
+
+                            const fieldset = noteItem.closest('.bucket-fieldset');
+                            if (fieldset) {
+                                const legend = fieldset.querySelector('legend');
+                                const allItems = fieldset.querySelectorAll('.sub-note-item');
+                                const visibleItems = Array.from(allItems).filter(item => item.style.display !== 'none');
+                                const bucketName = legend.textContent.replace(/\s*\(\d+\)\s*$/, '').trim();
+                                legend.textContent = `${bucketName} (${visibleItems.length})`;
+
+                                if (visibleItems.length === 0) {
+                                    fieldset.style.display = 'none';
+                                }
+                            }
+
+                            updateBucketCountSummary();
+                        }
+                    }
+                    button.disabled = false;
+                } else {
+                    alert('Failed to update tracking status');
+                    button.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating tracking status');
+                button.disabled = false;
+            });
+        }
         
         // Copy all visible sub-note titles to clipboard with hierarchical format including sections
         function copyAllVisibleTitles() {
@@ -931,6 +1184,9 @@
                 const groupedByParent = {};
                 
                 subNoteItems.forEach(item => {
+                    if (item.dataset.noteOnly === 'true') {
+                        return;
+                    }
                     // Skip hidden items (due to favorites filter)
                     if (item.style.display === 'none') {
                         return;
@@ -944,6 +1200,9 @@
                     
                     const headerElement = item.querySelector('h6');
                     if (headerElement) {
+                        if (item.dataset.noteOnly === 'true') {
+                            return;
+                        }
                         // Extract just the sub-note header (first span)
                         const headerSpan = headerElement.querySelector('span');
                         let text = headerSpan ? headerSpan.textContent.trim() : headerElement.textContent.trim();
@@ -1098,6 +1357,18 @@
             const selectedStatus = document.querySelector('input[name="trackStatusFilter"]:checked').value;
             const subNoteItems = document.querySelectorAll('.sub-note-item');
             const bucketSections = document.querySelectorAll('fieldset.bucket-fieldset');
+
+            const getParentIsFavorite = (item) => {
+                const dataValue = item.dataset.parentisfavorite;
+                if (dataValue !== undefined) {
+                    return dataValue === 'true' || dataValue === true;
+                }
+                const noteGroupHeader = item.closest('.note-group')?.querySelector('.note-group-header');
+                if (noteGroupHeader && noteGroupHeader.dataset.isFavorite !== undefined) {
+                    return noteGroupHeader.dataset.isFavorite === 'true' || noteGroupHeader.dataset.isFavorite === true;
+                }
+                return false;
+            };
             
             subNoteItems.forEach(item => {
                 // Check track status
@@ -1112,7 +1383,7 @@
                 
                 // Check favorites filter
                 const filterType = localStorage.getItem('consolidatedViewFilter') || 'all';
-                const parentIsFavorite = item.dataset.parentisfavorite === 'true' || item.dataset.parentisfavorite === true;
+                const parentIsFavorite = getParentIsFavorite(item);
                 let favoriteFilterMatches = filterType === 'all' || (filterType === 'favorite' && parentIsFavorite);
                 
                 // Check bucket filter
@@ -1126,6 +1397,8 @@
                 // Show item only if all filters match
                 item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches) ? 'block' : 'none';
             });
+
+            updateNoteGroupVisibility();
             
             // Update bucket section visibility
             bucketSections.forEach(section => {
@@ -1213,6 +1486,18 @@
             
             const subNoteItems = document.querySelectorAll('.sub-note-item');
             const bucketSections = document.querySelectorAll('fieldset.bucket-fieldset');
+
+            const getParentIsFavorite = (item) => {
+                const dataValue = item.dataset.parentisfavorite;
+                if (dataValue !== undefined) {
+                    return dataValue === 'true' || dataValue === true;
+                }
+                const noteGroupHeader = item.closest('.note-group')?.querySelector('.note-group-header');
+                if (noteGroupHeader && noteGroupHeader.dataset.isFavorite !== undefined) {
+                    return noteGroupHeader.dataset.isFavorite === 'true' || noteGroupHeader.dataset.isFavorite === true;
+                }
+                return false;
+            };
             
             // Re-apply all filters for each item
             subNoteItems.forEach(item => {
@@ -1229,7 +1514,7 @@
                 
                 // Check favorites filter
                 const filterType = localStorage.getItem('consolidatedViewFilter') || 'all';
-                const parentIsFavorite = item.dataset.parentisfavorite === 'true' || item.dataset.parentisfavorite === true;
+                const parentIsFavorite = getParentIsFavorite(item);
                 let favoriteFilterMatches = filterType === 'all' || (filterType === 'favorite' && parentIsFavorite);
                 
                 // Check bucket filter
@@ -1239,6 +1524,8 @@
                 // Show item only if all filters match
                 item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches) ? 'block' : 'none';
             });
+
+            updateNoteGroupVisibility();
             
             // Update bucket section visibility
             bucketSections.forEach(section => {
@@ -1256,6 +1543,15 @@
                         legend.textContent = bucketName.trim() + ' (' + visibleItems.length + ')';
                     }
                 }
+            });
+        }
+
+        function updateNoteGroupVisibility() {
+            const noteGroups = document.querySelectorAll('.note-group');
+            noteGroups.forEach(group => {
+                const items = group.querySelectorAll('.sub-note-item');
+                const visibleItems = Array.from(items).filter(item => item.style.display !== 'none');
+                group.style.display = visibleItems.length === 0 ? 'none' : 'block';
             });
         }
         
