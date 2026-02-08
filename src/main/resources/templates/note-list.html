@@ -123,7 +123,7 @@
         }
         
         .filter-card .row {
-            align-items: flex-start;
+            align-items: flex-end;
         }
         
         .filter-card label {
@@ -153,15 +153,28 @@
         
         .filter-buttons {
             display: flex;
+            justify-content: flex-start;
             gap: 0.5rem;
+            flex-wrap: wrap;
         }
-        
+
+        .filter-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .filter-actions label {
+            text-align: left;
+            width: 100%;
+        }
+
         .filter-buttons .btn {
-            flex: 1;
-            padding: 0.4rem 0.8rem;
+            flex: 0 0 auto;
+            padding: 0.35rem 0.7rem;
             border-radius: 8px;
             font-weight: 600;
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             transition: all 0.2s;
         }
         
@@ -204,7 +217,7 @@
             background: white;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            overflow: hidden;
+            overflow: visible;
             margin-bottom: 2rem;
         }
         
@@ -216,6 +229,7 @@
             transition: background-color 0.2s ease, transform 0.2s ease;
             position: relative;
             cursor: pointer;
+            overflow: visible;
         }
 
         .note-item.tracked-today {
@@ -242,6 +256,14 @@
             box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
             border: 2px solid #004085;
             border-radius: 6px;
+        }
+
+        .note-item.menu-open {
+            transform: none !important;
+        }
+
+        .note-item.menu-open:hover {
+            transform: none !important;
         }
         
         .note-item:hover::before {
@@ -349,6 +371,74 @@
             display: flex;
             gap: 0.25rem;
             align-items: center;
+        }
+
+        .action-menu .dropdown-toggle {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: #f8f9fa;
+            color: #495057;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-menu .dropdown-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-menu .dropdown-menu {
+            min-width: 180px;
+            font-size: 0.85rem;
+            display: none;
+            right: 0;
+            left: auto;
+            z-index: 1060;
+        }
+
+        .action-menu.show .dropdown-menu {
+            display: block;
+        }
+
+        .action-menu .dropdown-item {
+            display: grid;
+            grid-template-columns: 20px 1fr;
+            align-items: center;
+            column-gap: 0.5rem;
+            width: 100%;
+            height: auto;
+            padding: 0.4rem 0.75rem;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+        }
+
+        .action-menu .menu-icon {
+            width: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .action-menu .dropdown-item.duplicate-btn,
+        .action-menu .dropdown-item.delete-btn,
+        .action-menu .dropdown-item.view-btn,
+        .action-menu .dropdown-item.copy-btn {
+            width: 100%;
+            height: auto;
+            padding: 0.4rem 0.75rem;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            transform: none;
         }
         
         .action-btn {
@@ -603,8 +693,8 @@
 
         <!-- Filter Card -->
         <div class="filter-card">
-            <form method="get" class="row">
-                <div class="col-md-2">
+            <form method="get" class="row gx-1 gy-2">
+                <div class="col-lg-2 col-md-4">
                     <label for="tags" class="form-label">Tags</label>
                     <select id="tags" name="tagIds" class="form-select" multiple>
                         <option th:each="tag : ${allTags}"
@@ -613,7 +703,7 @@
                                 th:selected="${selectedTagIds.contains(tag.id)}"></option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-lg-2 col-md-3">
                     <label for="bucket" class="form-label">Bucket</label>
                     <select id="bucket" name="bucketId" class="form-select">
                         <option value="">All Buckets</option>
@@ -623,16 +713,24 @@
                                 th:selected="${selectedBucketId != null && selectedBucketId == bucket.id}"></option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-lg-2 col-md-3">
+                    <label for="trackStatus" class="form-label">Track</label>
+                    <select id="trackStatus" name="trackStatus" class="form-select" onchange="this.form.submit()">
+                        <option value="all" th:selected="${selectedTrackStatus == 'all'}">All</option>
+                        <option value="tracked" th:selected="${selectedTrackStatus == 'tracked'}">Tracked</option>
+                        <option value="untracked" th:selected="${selectedTrackStatus == 'untracked'}">Untracked</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-4 flex-grow-1">
                     <label for="search" class="form-label">Search</label>
                     <input type="search" id="search" name="search" placeholder="Search notes..." 
                            class="form-control" th:value="${search}"/>
                 </div>
-                <div class="col-md-4">
+                <div class="col-lg-2 col-md-4 filter-actions">
                     <label class="form-label">Actions</label>
                     <div class="filter-buttons">
-                        <button type="submit" class="btn btn-primary">🔍 Filter</button>
-                        <a href="/notes" class="btn btn-outline-secondary">Clear</a>
+                        <button type="submit" class="btn btn-primary btn-sm">🔍 Filter</button>
+                        <a href="/notes" class="btn btn-outline-secondary btn-sm">Clear</a>
                     </div>
                 </div>
             </form>
@@ -649,9 +747,9 @@
 
         <!-- Search Results (notes + subnotes) -->
         <div class="notes-list" th:if="${!searchResults.empty}">
-            <div th:each="result, iterStat : ${searchResults}" 
-                 class="note-item"
-                 th:classappend="${result.type == 'SUBNOTE' ? 'subnote-result' : ''}"
+              <div th:each="result, iterStat : ${searchResults}" 
+                  class="note-item"
+                  th:classappend="${(result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')) ? 'tracked-today' : ''} + (${result.type == 'SUBNOTE' ? ' subnote-result' : ''})"
                  th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}"
                  th:attr="data-note-url=${result.type == 'NOTE' ? '/notes/' + result.id : '/notes/' + result.parentNoteId}"
                  ondblclick="handleNoteDoubleClick(event, this)">
@@ -702,38 +800,26 @@
                                     th:selected="${result.bucketId != null && b.id.equals(result.bucketId)}"
                                     th:style="${result.bucketId != null && b.id.equals(result.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                         </select>
-                        <button th:if="${result.type == 'NOTE'}" 
-                                class="action-btn copy-btn" 
-                                th:attr="data-note-id=${result.id},data-note-name=${result.name},data-note-details=${result.details}"
-                                onclick="copyNoteToClipboard(this)"
-                                title="Copy to Clipboard">
-                            📋
-                        </button>
-                        <a th:if="${result.type == 'NOTE'}" 
-                           th:href="@{/notes/{id}(id=${result.id})}" 
-                           class="action-btn view-btn" 
-                           title="View">
-                            👁️
-                        </a>
                         <a th:if="${result.type == 'NOTE'}" 
                            th:href="@{/notes/{id}/edit(id=${result.id})}" 
                            class="action-btn edit-btn" 
                            title="Edit">
                             ✏️
                         </a>
-                        <a th:if="${result.type == 'NOTE'}" 
-                           th:href="@{/notes/{id}/duplicate(id=${result.id})}" 
-                           class="action-btn duplicate-btn" 
-                           title="Duplicate">
-                            🔁
-                        </a>
-                        <a th:if="${result.type == 'NOTE'}" 
-                           th:href="@{/notes/{id}/delete(id=${result.id})}" 
-                           class="action-btn delete-btn"
-                           onclick="return confirm('Delete this note?')"
-                           title="Delete">
-                            🗑️
-                        </a>
+                        <div th:if="${result.type == 'NOTE'}" class="dropdown action-menu">
+                            <button class="dropdown-toggle" type="button" onclick="toggleActionMenu(this, event)" aria-haspopup="true" aria-expanded="false" title="More actions">
+                                ⋮
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <button class="dropdown-item copy-btn" 
+                                    th:attr="data-note-id=${result.id},data-note-name=${result.name},data-note-details=${result.details}"
+                                    onclick="copyNoteToClipboard(this)"><span class="menu-icon">📋</span>Copy</button>
+                                <a class="dropdown-item view-btn" th:href="@{/notes/{id}(id=${result.id})}"><span class="menu-icon">👁️</span>View</a>
+                                <a class="dropdown-item duplicate-btn" th:href="@{/notes/{id}/duplicate(id=${result.id})}"><span class="menu-icon">🔁</span>Duplicate</a>
+                                <a class="dropdown-item" th:href="@{/notes/{id}/convert(id=${result.id})}" onclick="return confirm('Convert to task?')"><span class="menu-icon">→</span>Convert to Task</a>
+                                <a class="dropdown-item delete-btn" th:href="@{/notes/{id}/delete(id=${result.id})}" onclick="return confirm('Delete this note?')"><span class="menu-icon">🗑️</span>Delete</a>
+                            </div>
+                        </div>
                         
                         <!-- SUBNOTE actions - view and edit parent note only -->
                         <button th:if="${result.type == 'SUBNOTE'}" 
@@ -760,17 +846,19 @@
                                     th:style="${result.bucketId != null && b.id.equals(result.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                         </select>
                         <a th:if="${result.type == 'SUBNOTE'}" 
-                           th:href="@{/notes/{id}(id=${result.parentNoteId})}" 
-                           class="action-btn view-btn" 
-                           title="View Parent Note">
-                            👁️
-                        </a>
-                        <a th:if="${result.type == 'SUBNOTE'}" 
                            th:href="@{/notes/{id}/edit(id=${result.parentNoteId})}" 
                            class="action-btn edit-btn" 
                            title="Edit Parent Note">
                             ✏️
                         </a>
+                        <div th:if="${result.type == 'SUBNOTE'}" class="dropdown action-menu">
+                            <button class="dropdown-toggle" type="button" onclick="toggleActionMenu(this, event)" aria-haspopup="true" aria-expanded="false" title="More actions">
+                                ⋮
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <a class="dropdown-item view-btn" th:href="@{/notes/{id}(id=${result.parentNoteId})}"><span class="menu-icon">👁️</span>View Parent</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -821,39 +909,25 @@
                                     th:selected="${note.bucketId != null && b.id.equals(note.bucketId)}"
                                     th:style="${note.bucketId != null && b.id.equals(note.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                         </select>
-                        <button class="action-btn copy-btn" 
-                                th:attr="data-note-id=${note.id},data-note-name=${note.name},data-note-details=${note.details}"
-                                onclick="copyNoteToClipboard(this)"
-                                title="Copy to Clipboard">
-                            📋
-                        </button>
-                        <a th:href="@{/notes/{id}(id=${note.id})}" 
-                           class="action-btn view-btn" 
-                           title="View">
-                            👁️
-                        </a>
                         <a th:href="@{/notes/{id}/edit(id=${note.id})}" 
                            class="action-btn edit-btn" 
                            title="Edit">
                             ✏️
                         </a>
-                        <a th:href="@{/notes/{id}/duplicate(id=${note.id})}" 
-                           class="action-btn duplicate-btn" 
-                           title="Duplicate">
-                            🔁
-                        </a>
-                        <a th:href="@{/notes/{id}/delete(id=${note.id})}" 
-                           class="action-btn delete-btn"
-                           onclick="return confirm('Delete this note?')"
-                           title="Delete">
-                            ×
-                        </a>
-                        <a th:href="@{/notes/{id}/convert(id=${note.id})}" 
-                           class="convert-btn"
-                           onclick="return confirm('Convert to task?')" 
-                           title="Convert to Task">
-                            → Task
-                        </a>
+                        <div class="dropdown action-menu">
+                            <button class="dropdown-toggle" type="button" onclick="toggleActionMenu(this, event)" aria-haspopup="true" aria-expanded="false" title="More actions">
+                                ⋮
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <button class="dropdown-item copy-btn" 
+                                        th:attr="data-note-id=${note.id},data-note-name=${note.name},data-note-details=${note.details}"
+                                        onclick="copyNoteToClipboard(this)"><span class="menu-icon">📋</span>Copy</button>
+                                <a class="dropdown-item view-btn" th:href="@{/notes/{id}(id=${note.id})}"><span class="menu-icon">👁️</span>View</a>
+                                <a class="dropdown-item duplicate-btn" th:href="@{/notes/{id}/duplicate(id=${note.id})}"><span class="menu-icon">🔁</span>Duplicate</a>
+                                <a class="dropdown-item" th:href="@{/notes/{id}/convert(id=${note.id})}" onclick="return confirm('Convert to task?')"><span class="menu-icon">→</span>Convert to Task</a>
+                                <a class="dropdown-item delete-btn" th:href="@{/notes/{id}/delete(id=${note.id})}" onclick="return confirm('Delete this note?')"><span class="menu-icon">🗑️</span>Delete</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -954,6 +1028,41 @@
                 button.disabled = false;
             });
         }
+
+        function toggleActionMenu(button, event) {
+            event.stopPropagation();
+            event.preventDefault();
+
+            const menu = button.closest('.action-menu');
+            const noteItem = button.closest('.note-item');
+            const isOpen = menu.classList.contains('show');
+
+            document.querySelectorAll('.action-menu.show').forEach(openMenu => {
+                openMenu.classList.remove('show');
+            });
+            document.querySelectorAll('.note-item.menu-open').forEach(openItem => {
+                openItem.classList.remove('menu-open');
+            });
+
+            if (!isOpen) {
+                menu.classList.add('show');
+                if (noteItem) {
+                    noteItem.classList.add('menu-open');
+                }
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.action-menu')) {
+                return;
+            }
+            document.querySelectorAll('.action-menu.show').forEach(openMenu => {
+                openMenu.classList.remove('show');
+            });
+            document.querySelectorAll('.note-item.menu-open').forEach(openItem => {
+                openItem.classList.remove('menu-open');
+            });
+        });
 
         async function copyNoteToClipboard(button) {
             const noteId = button.getAttribute('data-note-id');

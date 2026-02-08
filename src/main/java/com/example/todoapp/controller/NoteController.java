@@ -44,6 +44,7 @@ public class NoteController {
                            @RequestParam(required = false) String search,
                            @RequestParam(required = false) List<Long> tagIds,
                            @RequestParam(required = false) Long bucketId,
+                           @RequestParam(required = false) String trackStatus,
                            @RequestParam(required = false) String quickFilter,
                            HttpServletRequest request) {
         
@@ -60,11 +61,21 @@ public class NoteController {
             // Use combined filter method that handles search, tags, and bucket together
             Set<Long> tagIdSet = tagIds != null ? new HashSet<>(tagIds) : Collections.emptySet();
             List<SearchResultDTO> searchResults = noteService.findByFilters(search, tagIdSet, bucketId);
+            if (trackStatus != null && !trackStatus.isBlank() && !"all".equalsIgnoreCase(trackStatus)) {
+                searchResults = searchResults.stream()
+                    .filter(result -> matchesTrackStatus(result.getLastTrackedDate(), trackStatus))
+                    .collect(Collectors.toList());
+            }
             model.addAttribute("searchResults", searchResults);
             model.addAttribute("notes", Collections.emptyList()); // Empty for backward compatibility
         } else {
             // No filters - show all notes
             List<Note> notes = noteService.findAll();
+            if (trackStatus != null && !trackStatus.isBlank() && !"all".equalsIgnoreCase(trackStatus)) {
+                notes = notes.stream()
+                    .filter(note -> matchesTrackStatus(note.getLastTrackedDate(), trackStatus))
+                    .collect(Collectors.toList());
+            }
             model.addAttribute("notes", notes);
             model.addAttribute("searchResults", Collections.emptyList());
         }
@@ -73,6 +84,7 @@ public class NoteController {
         model.addAttribute("search", search);
         model.addAttribute("selectedTagIds", tagIdSet);
         model.addAttribute("selectedBucketId", bucketId);
+        model.addAttribute("selectedTrackStatus", trackStatus != null ? trackStatus : "all");
         
         // Build applied filters label
         StringBuilder filterLabel = new StringBuilder();
@@ -83,6 +95,9 @@ public class NoteController {
         if (bucketId != null) {
             allBuckets.stream().filter(b -> b.getId().equals(bucketId)).findFirst()
                     .ifPresent(b -> filterLabel.append("Bucket: ").append(b.getName()).append("; "));
+        }
+        if (trackStatus != null && !trackStatus.isBlank() && !"all".equalsIgnoreCase(trackStatus)) {
+            filterLabel.append("Track: ").append(trackStatus).append("; ");
         }
         
         model.addAttribute("appliedFilters", filterLabel.length() > 0 ? filterLabel.toString() : "");
@@ -101,6 +116,17 @@ public class NoteController {
         model.addAttribute("lastQuickFilter", session.getAttribute("lastQuickFilter"));
 
         return "note-list";
+    }
+
+    private boolean matchesTrackStatus(java.time.LocalDateTime lastTrackedDate, String trackStatus) {
+        boolean isTracked = lastTrackedDate != null && lastTrackedDate.toLocalDate().equals(java.time.LocalDate.now());
+        if ("tracked".equalsIgnoreCase(trackStatus)) {
+            return isTracked;
+        }
+        if ("untracked".equalsIgnoreCase(trackStatus)) {
+            return !isTracked;
+        }
+        return true;
     }
 
     @GetMapping("/add")

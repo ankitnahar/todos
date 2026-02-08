@@ -75,6 +75,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- DevTools for template hot reload -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
