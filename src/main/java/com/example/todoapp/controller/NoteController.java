@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.MultiValueMap;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -163,10 +164,9 @@ public class NoteController {
                          @RequestParam(required = false) List<Long> tagIds,
                          @RequestParam(required = false) Long bucketId,
                          @RequestParam(required = false) Boolean nested,
-                         @RequestParam(required = false) List<String> subNoteHeaders,
-                         @RequestParam(required = false) List<String> subNoteDescriptions,
                          @RequestParam(required = false) List<Long> subNoteBucketIds,
                          @RequestParam(required = false) List<String> subNoteTagIds,
+                         @RequestParam MultiValueMap<String, String> formParams,
                          Model model) {
         if (result.hasErrors()) {
             model.addAttribute("allTags", tagService.findAll());
@@ -192,6 +192,8 @@ public class NoteController {
         
         // Handle nested flag and sub-notes
         note.setNested(nested != null && nested);
+        List<String> subNoteHeaders = formParams.get("subNoteHeaders");
+        List<String> subNoteDescriptions = formParams.get("subNoteDescriptions");
         if (note.isNested() && subNoteHeaders != null && !subNoteHeaders.isEmpty()) {
             for (int i = 0; i < subNoteHeaders.size(); i++) {
                 if (subNoteHeaders.get(i) != null && !subNoteHeaders.get(i).trim().isEmpty()) {
@@ -363,12 +365,11 @@ public class NoteController {
                            @RequestParam(required = false) List<Long> tagIds,
                            @RequestParam(required = false) Long bucketId,
                            @RequestParam(required = false) Boolean nested,
-                           @RequestParam(required = false) List<String> subNoteHeaders,
-                           @RequestParam(required = false) List<String> subNoteDescriptions,
                            @RequestParam(required = false) List<Long> subNoteIds,
                            @RequestParam(required = false) List<Long> subNoteLinkedNoteIds,
                            @RequestParam(required = false) List<Long> subNoteBucketIds,
                            @RequestParam(required = false) List<String> subNoteTagIds,
+                           @RequestParam MultiValueMap<String, String> formParams,
                            Model model,
                            RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
@@ -423,6 +424,9 @@ public class NoteController {
         
         // Clear existing sub-notes and add new ones
         note.getSubNotes().clear();
+
+        List<String> subNoteHeaders = formParams.get("subNoteHeaders");
+        List<String> subNoteDescriptions = formParams.get("subNoteDescriptions");
         
         if (note.isNested() && subNoteHeaders != null && !subNoteHeaders.isEmpty()) {
             for (int i = 0; i < subNoteHeaders.size(); i++) {

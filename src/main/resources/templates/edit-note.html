@@ -1959,6 +1959,14 @@
             
             // Clear the unsaved changes flag when form is submitted
             form.addEventListener('submit', function() {
+                // Ensure all sub-note editor contents are synced before submit
+                Object.entries(subNoteEditors).forEach(([index, editor]) => {
+                    const textarea = document.getElementById(`subNoteDesc-${index}`);
+                    if (textarea && editor && editor.root) {
+                        textarea.value = editor.root.innerHTML;
+                    }
+                });
+
                 // Collect selected tags from subNoteTagsData for all subnotes
                 document.querySelectorAll('.sub-note-item').forEach(subNote => {
                     const index = subNote.getAttribute('data-index');

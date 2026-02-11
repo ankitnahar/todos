@@ -137,6 +137,38 @@
             color: #2c3e50;
             margin-bottom: 0.5rem;
         }
+
+        .table-compact th,
+        .table-compact td {
+            padding: 0.35rem 0.5rem;
+            vertical-align: middle;
+        }
+
+        .table-compact th {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .tag-name-badge {
+            background: #1f6feb;
+            color: #fff;
+        }
+
+        .count-text {
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+            min-width: 2rem;
+            text-align: center;
+        }
+
+        .count-zero {
+            color: #d9534f;
+        }
+
+        .count-nonzero {
+            color: #198754;
+        }
     </style>
 </head>
 <body>
@@ -164,41 +196,38 @@
             <div class="section-title">Manage Tags</div>
             <p class="text-muted">Tags can be used for both tasks and notes</p>
 
-<table class="table table-bordered">
+<table class="table table-bordered table-sm table-compact">
     <thead>
     <tr>
         <th>Name</th>
-        <th>Used in Tasks</th>
-        <th>Used in Notes</th>
-        <th>Total Usage</th>
-        <th>Actions</th>
+        <th class="text-center">Used in Tasks</th>
+        <th class="text-center">Used in Notes</th>
+        <th class="text-right">Actions</th>
     </tr>
     </thead>
     <tbody>
     <tr th:each="tag : ${tags}">
         <td>
-            <span class="badge bg-primary" th:text="${tag.name}">Tag Name</span>
+            <span class="badge tag-name-badge" th:text="${tag.name}">Tag Name</span>
         </td>
-        <td>
-            <span class="badge bg-info" th:text="${#lists.size(tag.tasks)} + ' tasks'">0 tasks</span>
+        <td class="text-center">
+            <span class="count-text"
+                  th:classappend="${#lists.size(tag.tasks)} == 0 ? ' count-zero' : ' count-nonzero'"
+                  th:text="${#lists.size(tag.tasks)}">0</span>
         </td>
-        <td>
-            <span class="badge bg-success" th:text="${#lists.size(tag.notes)} + ' notes'">0 notes</span>
+        <td class="text-center">
+            <span class="count-text"
+                  th:classappend="${#lists.size(tag.notes)} == 0 ? ' count-zero' : ' count-nonzero'"
+                  th:text="${#lists.size(tag.notes)}">0</span>
         </td>
-        <td>
-            <span class="badge bg-secondary" th:text="${#lists.size(tag.tasks) + #lists.size(tag.notes)} + ' total'">0 total</span>
-        </td>
-        <td>
-            <form th:action="@{'/tags/' + ${tag.id} + '/delete'}" method="post" 
+        <td class="text-right">
+            <form class="d-inline-block" th:action="@{'/tags/' + ${tag.id} + '/delete'}" method="post" 
                   onsubmit="return confirm('Delete this tag? This will remove it from all associated tasks and notes.')">
                 <button type="submit" class="btn btn-danger btn-sm" 
                         th:disabled="${#lists.size(tag.tasks) > 0 || #lists.size(tag.notes) > 0}">
                     Delete
                 </button>
             </form>
-            <div th:if="${#lists.size(tag.tasks) > 0 || #lists.size(tag.notes) > 0}" class="mt-1">
-                <small class="text-muted">Cannot delete: Tag is in use</small>
-            </div>
         </td>
     </tr>
     </tbody>
