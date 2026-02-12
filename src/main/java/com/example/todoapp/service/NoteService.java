@@ -216,6 +216,53 @@ public class NoteService {
             subNoteRepository.save(subNote);
         }
     }
+
+    @Transactional
+    public void moveSubNoteToNote(Long subNoteId, Long targetNoteId) {
+        SubNote subNote = subNoteRepository.findById(subNoteId)
+            .orElseThrow(() -> new IllegalArgumentException("Sub-note not found"));
+        Note sourceNote = subNote.getNote();
+        if (sourceNote == null) {
+            throw new IllegalArgumentException("Sub-note has no parent note");
+        }
+        if (sourceNote.getId().equals(targetNoteId)) {
+            throw new IllegalArgumentException("Target note must be different from source note");
+        }
+
+        Note targetNote = noteRepository.findByIdWithSubNotes(targetNoteId);
+        if (targetNote == null) {
+            throw new IllegalArgumentException("Target note not found");
+        }
+
+        if (!sourceNote.isNested() || sourceNote.getSubNotes() == null || sourceNote.getSubNotes().isEmpty()) {
+            throw new IllegalArgumentException("Source note must have sub-notes");
+        }
+        if (!targetNote.isNested() || targetNote.getSubNotes() == null || targetNote.getSubNotes().isEmpty()) {
+            throw new IllegalArgumentException("Target note must have sub-notes");
+        }
+
+        int nextOrder = 0;
+        if (targetNote.getSubNotes() != null && !targetNote.getSubNotes().isEmpty()) {
+            nextOrder = targetNote.getSubNotes().stream()
+                .map(SubNote::getDisplayOrder)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(-1) + 1;
+        }
+        subNote.setDisplayOrder(nextOrder);
+        subNote.setNote(targetNote);
+
+        subNoteRepository.saveAndFlush(subNote);
+    }
+
+    public List<Note> findNotesWithSubNotesExcluding(Long excludedNoteId) {
+        List<Note> notes = noteRepository.findAllSorted();
+        return notes.stream()
+            .filter(note -> note.getId() != null && !note.getId().equals(excludedNoteId))
+            .filter(Note::isNested)
+            .filter(note -> note.getSubNotes() != null && !note.getSubNotes().isEmpty())
+            .collect(Collectors.toList());
+    }
     
     @Transactional
     public void updateNoteBucket(Long noteId, Long bucketId) {

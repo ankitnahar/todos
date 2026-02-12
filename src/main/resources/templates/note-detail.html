@@ -181,13 +181,14 @@
         }
         
         .sub-note-header {
-            background: transparent;
+            background: #ffffff;
             padding: 0.5rem 1rem;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: none;
+            border: 2px solid #667eea;
+            border-radius: 6px;
         }
         
         .sub-note-header:hover {
@@ -249,7 +250,10 @@
         
         .sub-note-description {
             padding: 0.5rem 1rem 0.75rem 1rem;
-            background: transparent;
+            background: #ffffff;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            margin: 0.5rem 1rem 0.75rem 1rem;
             display: none;
         }
         
@@ -418,6 +422,18 @@
                                                         th:selected="${b.id.equals(subNote.bucketId)}"
                                                         th:style="${b.id.equals(subNote.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                                             </select>
+
+                                                <select th:if="${moveTargets != null && !moveTargets.isEmpty()}"
+                                                    class="form-select form-select-sm"
+                                                    th:data-subnote-id="${subNote.id}"
+                                                    onchange="moveSubNoteToNote(this)"
+                                                    onclick="event.stopPropagation()"
+                                                    style="width: auto; display: inline-block; margin-right: 0.5rem;">
+                                                <option value="" selected disabled>Move to note...</option>
+                                                <option th:each="n : ${moveTargets}"
+                                                    th:value="${n.id}"
+                                                    th:text="${n.name}">Note</option>
+                                                </select>
                                             
                                             <!-- Edit button for linked notes -->
                                             <a th:if="${subNote.linkedNoteId != null}" 
@@ -661,6 +677,33 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Failed to move sub-note');
+            });
+        }
+
+        function moveSubNoteToNote(selectElement) {
+            const subNoteId = selectElement.getAttribute('data-subnote-id');
+            const targetNoteId = selectElement.value;
+
+            fetch('/notes/subnote/' + subNoteId + '/move-note', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'targetNoteId=' + targetNoteId
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Failed to move sub-note: ' + data.message);
+                    selectElement.selectedIndex = 0;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to move sub-note');
+                selectElement.selectedIndex = 0;
             });
         }
         

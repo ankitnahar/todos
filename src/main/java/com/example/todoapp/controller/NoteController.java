@@ -257,6 +257,9 @@ public class NoteController {
             Map<Long, Note> linkedNotes = noteService.getLinkedNotesForSubNotes(note.getSubNotes());
             model.addAttribute("linkedNotes", linkedNotes);
         }
+
+        List<Note> moveTargets = noteService.findNotesWithSubNotesExcluding(id);
+        model.addAttribute("moveTargets", moveTargets);
         
         return "note-detail";
     }
@@ -593,6 +596,22 @@ public class NoteController {
             noteService.updateSubNoteBucket(subNoteId, bucketId);
             response.put("success", true);
             response.put("message", "Sub-note moved to new bucket successfully");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Failed to move sub-note: " + e.getMessage());
+        }
+        return response;
+    }
+
+    @PostMapping("/subnote/{subNoteId}/move-note")
+    @ResponseBody
+    public Map<String, Object> moveSubNoteToNote(@PathVariable("subNoteId") Long subNoteId,
+                                                  @RequestParam("targetNoteId") Long targetNoteId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            noteService.moveSubNoteToNote(subNoteId, targetNoteId);
+            response.put("success", true);
+            response.put("message", "Sub-note moved to another note successfully");
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Failed to move sub-note: " + e.getMessage());

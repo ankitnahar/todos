@@ -171,6 +171,11 @@
             padding: 0.5rem !important;
             overflow-y: auto !important;
         }
+
+        .sub-note-description-section.expand-all .ql-editor {
+            max-height: none !important;
+            overflow-y: hidden !important;
+        }
         
         .sub-note-description-section .ql-editor p {
             margin-bottom: 0 !important;
@@ -187,6 +192,11 @@
             max-width: 100%;
             overflow: visible;
             border-radius: 4px;
+            border: 1px solid #ced4da;
+        }
+
+        .sub-note-description-section.expand-all .ql-container {
+            height: auto !important;
         }
         
         .sub-note-description-section .ql-editor {
@@ -235,6 +245,7 @@
             max-height: 200px;
             overflow-y: auto;
             resize: vertical;
+            border: 1px solid #ced4da;
         }
 
         .form-control:focus {
@@ -684,9 +695,11 @@
             display: flex;
             gap: 0.5rem;
             align-items: center;
-            padding: 0.25rem 1rem;
-            background: transparent;
+            padding: 0.35rem 0.75rem;
+            background: #ffffff;
             justify-content: space-between;
+            border: 2px solid #667eea;
+            border-radius: 6px;
         }
         
         .sub-note-field-group {
@@ -1379,51 +1392,14 @@
             
             // Initialize Quill editor for this sub-note (only if not linked)
             if (!isLinked) {
-                // Ensure the container exists before initializing Quill
-                const editorContainer = document.getElementById(`subNoteDesc-editor-${index}`);
-                if (editorContainer) {
-                    const quillEditor = new Quill(`#subNoteDesc-editor-${index}`, {
-                        theme: 'snow',
-                        modules: {
-                            toolbar: [
-                                ['bold', 'italic', 'underline', 'strike'],
-                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                ['clean', 'link']
-                            ]
-                        }
-                    });
-                    
-                    // Set existing content if available
-                    if (descValue && quillEditor && quillEditor.root) {
-                        quillEditor.root.innerHTML = descValue;
-                        document.getElementById(`subNoteDesc-${index}`).value = descValue;
-                    }
-                    
-                    subNoteEditors[index] = quillEditor;
-                    
-                    // Auto-resize function for sub-note Quill editor
-                    function resizeSubNoteEditor() {
-                        const editor = quillEditor.root;
-                        const container = editor.parentElement;
-                        const scrollHeight = editor.scrollHeight;
-                        const minHeight = 80;
-                        const maxHeight = 300;
-                        
-                        let newHeight = Math.max(minHeight, Math.min(maxHeight, scrollHeight + 10));
-                        if (container) {
-                            container.style.height = newHeight + 'px';
-                        }
-                    }
-                    
-                    // Sync with hidden textarea
-                    quillEditor.on('text-change', function() {
-                        document.getElementById(`subNoteDesc-${index}`).value = quillEditor.root.innerHTML;
-                        setTimeout(resizeSubNoteEditor, 0); // Delay to ensure content is rendered
-                        checkForChanges();
-                    });
-                    
-                    // Initial resize after content is loaded
-                    setTimeout(resizeSubNoteEditor, 100);
+                const descTextarea = document.getElementById(`subNoteDesc-${index}`);
+                if (descTextarea) {
+                    descTextarea.value = descValue || '';
+                }
+
+                const descSection = document.getElementById(`descSection-${index}`);
+                if (descSection && descSection.classList.contains('show')) {
+                    initializeSubNoteEditor(index);
                 }
             } else {
                 // For linked subnotes, clear the description textarea
@@ -1643,6 +1619,65 @@
             updateBucketCounts();
             checkForChanges();
         }
+
+        function initializeSubNoteEditor(index) {
+            if (subNoteEditors[index]) {
+                return;
+            }
+
+            const editorContainer = document.getElementById(`subNoteDesc-editor-${index}`);
+            if (!editorContainer) {
+                return;
+            }
+
+            const quillEditor = new Quill(`#subNoteDesc-editor-${index}`, {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['clean', 'link']
+                    ]
+                }
+            });
+
+            const descTextarea = document.getElementById(`subNoteDesc-${index}`);
+            if (descTextarea && descTextarea.value && quillEditor && quillEditor.root) {
+                quillEditor.root.innerHTML = descTextarea.value;
+            }
+
+            subNoteEditors[index] = quillEditor;
+
+            function resizeSubNoteEditor() {
+                const editor = quillEditor.root;
+                const container = editor.parentElement;
+                const scrollHeight = editor.scrollHeight;
+                const minHeight = 80;
+                const section = editor.closest('.sub-note-description-section');
+                const isExpandAll = section && section.classList.contains('expand-all');
+
+                let newHeight = scrollHeight + 10;
+                if (!isExpandAll) {
+                    const maxHeight = 300;
+                    newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+                }
+
+                if (container) {
+                    container.style.height = Math.max(minHeight, newHeight) + 'px';
+                }
+            }
+
+            quillEditor.on('text-change', function() {
+                const textarea = document.getElementById(`subNoteDesc-${index}`);
+                if (textarea) {
+                    textarea.value = quillEditor.root.innerHTML;
+                }
+                setTimeout(resizeSubNoteEditor, 0);
+                checkForChanges();
+            });
+
+            setTimeout(resizeSubNoteEditor, 100);
+        }
         
         function toggleDescription(index) {
             const descSection = document.getElementById(`descSection-${index}`);
@@ -1656,6 +1691,7 @@
                 descSection.classList.add('show');
                 toggleBtn.classList.add('expanded');
                 toggleBtn.textContent = '▼';
+                initializeSubNoteEditor(index);
             }
         }
         
@@ -1670,11 +1706,18 @@
                 if (anyExpanded) {
                     // Collapse all
                     section.classList.remove('show');
+                    section.classList.remove('expand-all');
                 } else {
                     // Expand only sections with content
                     const textarea = section.querySelector('textarea[name="subNoteDescriptions"]');
                     if (textarea && textarea.value && textarea.value.trim() !== '' && textarea.value !== '<p><br></p>') {
                         section.classList.add('show');
+                        section.classList.add('expand-all');
+                        const subNoteElement = section.closest('.sub-note-item');
+                        const index = subNoteElement ? subNoteElement.getAttribute('data-index') : null;
+                        if (index !== null) {
+                            initializeSubNoteEditor(index);
+                        }
                     }
                 }
             });
@@ -1700,11 +1743,23 @@
             setTimeout(() => {
                 Object.values(subNoteEditors).forEach(editor => {
                     if (editor && editor.root && editor.root.parentElement) {
+                        const section = editor.root.closest('.sub-note-description-section');
+                        const isExpandAll = section && section.classList.contains('expand-all');
                         const scrollHeight = editor.root.scrollHeight;
                         const minHeight = 80;
-                        const maxHeight = 300;
-                        let newHeight = Math.max(minHeight, Math.min(maxHeight, scrollHeight + 10));
-                        editor.root.parentElement.style.height = newHeight + 'px';
+                        let newHeight = scrollHeight + 10;
+                        if (!isExpandAll) {
+                            const maxHeight = 300;
+                            newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+                        }
+                        editor.root.parentElement.style.height = Math.max(minHeight, newHeight) + 'px';
+                        if (isExpandAll) {
+                            editor.root.style.maxHeight = 'none';
+                            editor.root.style.overflowY = 'hidden';
+                        } else {
+                            editor.root.style.maxHeight = '';
+                            editor.root.style.overflowY = '';
+                        }
                     }
                 });
             }, 50);

@@ -524,8 +524,8 @@
         /* Ensure Quill editors in sub-notes display properly */
         .sub-note-description-section .ql-container {
             background: white;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
+            border: 2px solid #667eea !important;
+            border-radius: 6px;
         }
         
         .sub-note-description-section .ql-editor {
@@ -534,9 +534,20 @@
         }
         
         .sub-note-description-section .ql-toolbar {
-            border: 1px solid #dee2e6;
+            border: 2px solid #667eea !important;
             border-bottom: none;
             background: #f8f9fa;
+            border-radius: 6px 6px 0 0;
+        }
+
+        .sub-note-item input[name="subNoteHeaders"] {
+            border: 2px solid #667eea !important;
+            border-radius: 6px;
+        }
+
+        .sub-note-item .form-control.sub-note-description-field {
+            border: 2px solid #667eea !important;
+            border-radius: 6px;
         }
     </style>
 </head>
