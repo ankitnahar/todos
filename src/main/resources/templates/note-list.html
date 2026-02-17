@@ -704,13 +704,12 @@
                     </select>
                 </div>
                 <div class="col-lg-2 col-md-3">
-                    <label for="bucket" class="form-label">Bucket</label>
-                    <select id="bucket" name="bucketId" class="form-select">
-                        <option value="">All Buckets</option>
+                    <label for="buckets" class="form-label">Buckets</label>
+                    <select id="buckets" name="bucketIds" class="form-select" multiple>
                         <option th:each="bucket : ${allBuckets}"
                                 th:value="${bucket.id}"
                                 th:text="${bucket.name}"
-                                th:selected="${selectedBucketId != null && selectedBucketId == bucket.id}"></option>
+                                th:selected="${selectedBucketIds.contains(bucket.id)}"></option>
                     </select>
                 </div>
                 <div class="col-lg-2 col-md-3">
@@ -943,6 +942,13 @@
             // Initialize Select2 for tag dropdown
             $('#tags').select2({
                 placeholder: 'Select tags to filter...',
+                allowClear: true,
+                width: '100%'
+            });
+            
+            // Initialize Select2 for bucket dropdown
+            $('#buckets').select2({
+                placeholder: 'Select buckets to filter...',
                 allowClear: true,
                 width: '100%'
             });

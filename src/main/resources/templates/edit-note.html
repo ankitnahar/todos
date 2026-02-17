@@ -167,14 +167,16 @@
             font-size: 16px !important;
             line-height: 1.6 !important;
             min-height: 60px !important;
-            max-height: 300px !important;
             padding: 0.5rem !important;
             overflow-y: auto !important;
+            height: auto !important;
+            max-height: none !important;
         }
 
         .sub-note-description-section.expand-all .ql-editor {
             max-height: none !important;
             overflow-y: hidden !important;
+            height: auto !important;
         }
         
         .sub-note-description-section .ql-editor p {
@@ -992,6 +994,50 @@
         let defaultBucketId = null;
         let allBuckets = [];
         let allTags = [];
+
+        function normalizeQuillHtml(html) {
+            if (!html) {
+                return '';
+            }
+
+            const container = document.createElement('div');
+            container.innerHTML = html;
+
+            const isEmptyParagraph = (node) => {
+                return node &&
+                    node.nodeType === Node.ELEMENT_NODE &&
+                    node.tagName === 'P' &&
+                    (node.innerHTML === '<br>' || node.textContent.trim() === '');
+            };
+
+            while (container.lastChild) {
+                const node = container.lastChild;
+                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '') {
+                    container.removeChild(node);
+                    continue;
+                }
+                if (isEmptyParagraph(node)) {
+                    container.removeChild(node);
+                    continue;
+                }
+                break;
+            }
+
+            const cleaned = container.innerHTML.trim();
+            return cleaned === '<p><br></p>' ? '' : cleaned;
+        }
+
+        function trimTrailingBlankLines(quillEditor) {
+            if (!quillEditor) {
+                return;
+            }
+
+            let text = quillEditor.getText();
+            while (text.endsWith('\n\n')) {
+                quillEditor.deleteText(quillEditor.getLength() - 1, 1, 'silent');
+                text = quillEditor.getText();
+            }
+        }
         
         // Load tags from JSON
         try {
@@ -1242,7 +1288,7 @@
                 if (subNoteCount === 0) {
                     console.log('Adding first sub-note during conversion');
                     // Get the current details content (only details, keep name)
-                    const currentDetails = quill.root.innerHTML;
+                    const currentDetails = normalizeQuillHtml(quill.root.innerHTML);
                     const currentName = nameInput.value;
                     
                     console.log('Current note data:', {name: currentName, hasDetails: !!currentDetails});
@@ -1269,7 +1315,7 @@
                     const descField = document.getElementById(`subNoteDesc-${firstSubNoteIndex}`);
                     
                     if (descField) {
-                        const descValue = descField.value || '';
+                        const descValue = normalizeQuillHtml(descField.value || '');
                         
                         // Only update details, keep the name field
                         if (descValue) {
@@ -1294,10 +1340,11 @@
             
             const headerValue = existingData && existingData.header ? existingData.header.replace(/"/g, '&quot;') : '';
             const descValue = existingData && existingData.description ? existingData.description : '';
+            const cleanedDescValue = normalizeQuillHtml(descValue);
             const subNoteId = existingData && existingData.id ? existingData.id : '';
             const linkedNoteId = existingData && existingData.linkedNoteId ? existingData.linkedNoteId : '';
             const bucketId = existingData && existingData.bucketId ? existingData.bucketId : (targetBucketId || defaultBucketId || '');
-            const hasDescription = descValue && descValue.trim() !== '' && descValue !== '<p><br></p>';
+            const hasDescription = cleanedDescValue && cleanedDescValue.trim() !== '';
             const isLinked = linkedNoteId && linkedNoteId !== 'null' && linkedNoteId !== '';
             
             // Determine which bucket section to add to
@@ -1360,7 +1407,7 @@
                     <!-- Description Section (hidden for linked notes) -->
                     <div class="sub-note-description-section" id="descSection-${index}" style="display: ${isLinked ? 'none' : ''};">
                         <label class="sub-note-control-label" style="margin-top: 0.5rem; margin-bottom: 0.25rem;">Description</label>
-                        <div id="subNoteDesc-editor-${index}" style="min-height: 80px; max-height: 300px; border-radius: 6px; overflow: hidden;"></div>
+                        <div id="subNoteDesc-editor-${index}" style="min-height: 80px; border-radius: 6px;"></div>
                         <textarea class="form-control sub-note-description-field" 
                                   id="subNoteDesc-${index}" 
                                   name="subNoteDescriptions" 
@@ -1394,7 +1441,7 @@
             if (!isLinked) {
                 const descTextarea = document.getElementById(`subNoteDesc-${index}`);
                 if (descTextarea) {
-                    descTextarea.value = descValue || '';
+                    descTextarea.value = cleanedDescValue || '';
                 }
 
                 const descSection = document.getElementById(`descSection-${index}`);
@@ -1643,40 +1690,19 @@
 
             const descTextarea = document.getElementById(`subNoteDesc-${index}`);
             if (descTextarea && descTextarea.value && quillEditor && quillEditor.root) {
-                quillEditor.root.innerHTML = descTextarea.value;
+                quillEditor.root.innerHTML = normalizeQuillHtml(descTextarea.value);
             }
 
             subNoteEditors[index] = quillEditor;
 
-            function resizeSubNoteEditor() {
-                const editor = quillEditor.root;
-                const container = editor.parentElement;
-                const scrollHeight = editor.scrollHeight;
-                const minHeight = 80;
-                const section = editor.closest('.sub-note-description-section');
-                const isExpandAll = section && section.classList.contains('expand-all');
-
-                let newHeight = scrollHeight + 10;
-                if (!isExpandAll) {
-                    const maxHeight = 300;
-                    newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
-                }
-
-                if (container) {
-                    container.style.height = Math.max(minHeight, newHeight) + 'px';
-                }
-            }
-
-            quillEditor.on('text-change', function() {
+            quillEditor.on('text-change', function(delta, oldDelta, source) {
+                // Only sync to textarea, don't modify editor content during typing
                 const textarea = document.getElementById(`subNoteDesc-${index}`);
                 if (textarea) {
-                    textarea.value = quillEditor.root.innerHTML;
+                    textarea.value = normalizeQuillHtml(quillEditor.root.innerHTML);
                 }
-                setTimeout(resizeSubNoteEditor, 0);
                 checkForChanges();
             });
-
-            setTimeout(resizeSubNoteEditor, 100);
         }
         
         function toggleDescription(index) {
@@ -1717,6 +1743,15 @@
                         const index = subNoteElement ? subNoteElement.getAttribute('data-index') : null;
                         if (index !== null) {
                             initializeSubNoteEditor(index);
+                            // Force editor to expand to full content height
+                            setTimeout(() => {
+                                const editor = subNoteEditors[index];
+                                if (editor && editor.root) {
+                                    editor.root.style.height = 'auto';
+                                    editor.root.style.height = editor.root.scrollHeight + 'px';
+                                    editor.root.style.overflowY = 'hidden';
+                                }
+                            }, 50);
                         }
                     }
                 }
@@ -1738,31 +1773,6 @@
             });
             
             toggleAllText.textContent = anyExpanded ? 'Expand All' : 'Collapse All';
-            
-            // Trigger resize for all visible editors
-            setTimeout(() => {
-                Object.values(subNoteEditors).forEach(editor => {
-                    if (editor && editor.root && editor.root.parentElement) {
-                        const section = editor.root.closest('.sub-note-description-section');
-                        const isExpandAll = section && section.classList.contains('expand-all');
-                        const scrollHeight = editor.root.scrollHeight;
-                        const minHeight = 80;
-                        let newHeight = scrollHeight + 10;
-                        if (!isExpandAll) {
-                            const maxHeight = 300;
-                            newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
-                        }
-                        editor.root.parentElement.style.height = Math.max(minHeight, newHeight) + 'px';
-                        if (isExpandAll) {
-                            editor.root.style.maxHeight = 'none';
-                            editor.root.style.overflowY = 'hidden';
-                        } else {
-                            editor.root.style.maxHeight = '';
-                            editor.root.style.overflowY = '';
-                        }
-                    }
-                });
-            }, 50);
         }
         
         // Tag search functionality
@@ -1861,7 +1871,7 @@
             if (!quill || !nameInput) return; // Safety check
             
             const currentSelectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
-            const editorContent = quill.root.innerHTML;
+            const editorContent = normalizeQuillHtml(quill.root.innerHTML);
             const currentData = {
                 name: nameInput.value,
                 details: editorContent,
@@ -1918,14 +1928,14 @@
             
             // Set initial content from textarea
             if (textarea.value) {
-                quill.root.innerHTML = textarea.value;
+                quill.root.innerHTML = normalizeQuillHtml(textarea.value);
             }
             
             // Store original form values including selected tags
             const originalSelectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
             originalFormData = {
                 name: nameInput.value,
-                details: quill.root.innerHTML,
+                details: normalizeQuillHtml(quill.root.innerHTML),
                 tags: originalSelectedTags.join(',')
             };
             
@@ -1945,7 +1955,7 @@
             
             // Sync Quill content with hidden textarea and resize
             quill.on('text-change', function() {
-                textarea.value = quill.root.innerHTML;
+                textarea.value = normalizeQuillHtml(quill.root.innerHTML);
                 setTimeout(resizeEditor, 0); // Delay to ensure content is rendered
                 checkForChanges();
             });
@@ -2018,7 +2028,7 @@
                 Object.entries(subNoteEditors).forEach(([index, editor]) => {
                     const textarea = document.getElementById(`subNoteDesc-${index}`);
                     if (textarea && editor && editor.root) {
-                        textarea.value = editor.root.innerHTML;
+                        textarea.value = normalizeQuillHtml(editor.root.innerHTML);
                     }
                 });
 

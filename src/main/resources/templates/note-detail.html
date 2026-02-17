@@ -158,6 +158,9 @@
             font-size: 16px !important;
             line-height: 1.6 !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow-y: hidden !important;
         }
         .ql-toolbar {
             display: none !important;
@@ -555,6 +558,13 @@
             } else {
                 description.classList.add('show');
                 toggle.classList.add('expanded');
+                // Force editor to expand to full content height
+                const editor = description.querySelector('.ql-editor');
+                if (editor) {
+                    editor.style.height = 'auto';
+                    editor.style.height = editor.scrollHeight + 'px';
+                    editor.style.overflowY = 'hidden';
+                }
             }
         }
         
@@ -639,6 +649,13 @@
                     desc.classList.remove('show');
                 } else {
                     desc.classList.add('show');
+                    // Force editor to expand to full content height
+                    const editor = desc.querySelector('.ql-editor');
+                    if (editor) {
+                        editor.style.height = 'auto';
+                        editor.style.height = editor.scrollHeight + 'px';
+                        editor.style.overflowY = 'hidden';
+                    }
                 }
             });
             

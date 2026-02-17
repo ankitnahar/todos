@@ -44,7 +44,7 @@ public class NoteController {
     public String listNotes(Model model,
                            @RequestParam(required = false) String search,
                            @RequestParam(required = false) List<Long> tagIds,
-                           @RequestParam(required = false) Long bucketId,
+                           @RequestParam(required = false) List<Long> bucketIds,
                            @RequestParam(required = false) String trackStatus,
                            @RequestParam(required = false) String quickFilter,
                            HttpServletRequest request) {
@@ -56,12 +56,13 @@ public class NoteController {
         model.addAttribute("allBuckets", allBuckets);
         
         // Apply filters
-        boolean hasFilters = (search != null && !search.isBlank()) || (tagIds != null && !tagIds.isEmpty()) || (bucketId != null);
+        boolean hasFilters = (search != null && !search.isBlank()) || (tagIds != null && !tagIds.isEmpty()) || (bucketIds != null && !bucketIds.isEmpty());
         
         if (hasFilters) {
-            // Use combined filter method that handles search, tags, and bucket together
+            // Use combined filter method that handles search, tags, and buckets together
             Set<Long> tagIdSet = tagIds != null ? new HashSet<>(tagIds) : Collections.emptySet();
-            List<SearchResultDTO> searchResults = noteService.findByFilters(search, tagIdSet, bucketId);
+            Set<Long> bucketIdSet = bucketIds != null ? new HashSet<>(bucketIds) : Collections.emptySet();
+            List<SearchResultDTO> searchResults = noteService.findByFilters(search, tagIdSet, bucketIdSet);
             if (trackStatus != null && !trackStatus.isBlank() && !"all".equalsIgnoreCase(trackStatus)) {
                 searchResults = searchResults.stream()
                     .filter(result -> matchesTrackStatus(result.getLastTrackedDate(), trackStatus))
@@ -82,9 +83,10 @@ public class NoteController {
         }
         
         Set<Long> tagIdSet = tagIds != null ? new HashSet<>(tagIds) : Collections.emptySet();
+        Set<Long> bucketIdSet = bucketIds != null ? new HashSet<>(bucketIds) : Collections.emptySet();
         model.addAttribute("search", search);
         model.addAttribute("selectedTagIds", tagIdSet);
-        model.addAttribute("selectedBucketId", bucketId);
+        model.addAttribute("selectedBucketIds", bucketIdSet);
         model.addAttribute("selectedTrackStatus", trackStatus != null ? trackStatus : "all");
         
         // Build applied filters label
@@ -93,9 +95,12 @@ public class NoteController {
         if (tagIdSet != null && !tagIdSet.isEmpty()) filterLabel.append("Tags: ").append(
                 allTags.stream().filter(t -> tagIdSet.contains(t.getId())).map(Tag::getName)
                         .collect(Collectors.joining(", "))).append("; ");
-        if (bucketId != null) {
-            allBuckets.stream().filter(b -> b.getId().equals(bucketId)).findFirst()
-                    .ifPresent(b -> filterLabel.append("Bucket: ").append(b.getName()).append("; "));
+        if (bucketIdSet != null && !bucketIdSet.isEmpty()) {
+            String bucketNames = allBuckets.stream()
+                    .filter(b -> bucketIdSet.contains(b.getId()))
+                    .map(Bucket::getName)
+                    .collect(Collectors.joining(", "));
+            filterLabel.append("Buckets: ").append(bucketNames).append("; ");
         }
         if (trackStatus != null && !trackStatus.isBlank() && !"all".equalsIgnoreCase(trackStatus)) {
             filterLabel.append("Track: ").append(trackStatus).append("; ");

@@ -487,7 +487,51 @@ public class NoteService {
         return results;
     }
     
-    public List<SearchResultDTO> findByFilters(String search, Set<Long> tagIds, Long bucketId) {
+    /**
+     * Find all notes and subnotes that belong to ANY of the provided bucket IDs (OR condition)
+     */
+    public List<SearchResultDTO> findByBuckets(Set<Long> bucketIds) {
+        List<SearchResultDTO> results = new ArrayList<>();
+        Set<String> resultKeys = new HashSet<>();
+        
+        if (bucketIds == null || bucketIds.isEmpty()) {
+            return results;
+        }
+        
+        System.out.println("[FIND BY BUCKETS] Searching for bucket IDs: " + bucketIds);
+        
+        // Find notes and subnotes for each bucket (OR condition)
+        for (Long bucketId : bucketIds) {
+            List<SearchResultDTO> bucketResults = findByBucket(bucketId);
+            for (SearchResultDTO result : bucketResults) {
+                String key = result.getType() + "_" + result.getId();
+                if (resultKeys.add(key)) {
+                    results.add(result);
+                }
+            }
+        }
+        
+        // Sort results: favorites first, then by updated date
+        results.sort((r1, r2) -> {
+            int favCompare = Boolean.compare(
+                r2.getFavorite() != null && r2.getFavorite(),
+                r1.getFavorite() != null && r1.getFavorite()
+            );
+            if (favCompare != 0) return favCompare;
+            
+            LocalDateTime date1 = r1.getUpdatedAt() != null ? r1.getUpdatedAt() : r1.getCreatedAt();
+            LocalDateTime date2 = r2.getUpdatedAt() != null ? r2.getUpdatedAt() : r2.getCreatedAt();
+            if (date1 == null && date2 == null) return 0;
+            if (date1 == null) return 1;
+            if (date2 == null) return -1;
+            return date2.compareTo(date1);
+        });
+        
+        System.out.println("[FIND BY BUCKETS] Returning " + results.size() + " total results");
+        return results;
+    }
+    
+    public List<SearchResultDTO> findByFilters(String search, Set<Long> tagIds, Set<Long> bucketIds) {
         List<SearchResultDTO> results = new ArrayList<>();
         Set<String> resultKeys = new HashSet<>();
         
@@ -528,9 +572,9 @@ public class NoteService {
             }
         }
         
-        // Filter by bucket if provided
-        if (bucketId != null) {
-            List<SearchResultDTO> bucketResults = findByBucket(bucketId);
+        // Filter by buckets if provided (OR condition between buckets)
+        if (bucketIds != null && !bucketIds.isEmpty()) {
+            List<SearchResultDTO> bucketResults = findByBuckets(bucketIds);
             if ((search != null && !search.isBlank()) || (tagIds != null && !tagIds.isEmpty())) {
                 // Intersect with existing results
                 Set<String> currentKeys = new HashSet<>(resultKeys);

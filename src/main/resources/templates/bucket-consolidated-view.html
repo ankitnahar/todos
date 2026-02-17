@@ -199,6 +199,9 @@
         .sub-note-description .ql-editor {
             padding: 0.75rem;
             min-height: 50px;
+            height: auto !important;
+            max-height: none !important;
+            overflow-y: hidden !important;
         }
         
         .note-group {
@@ -261,6 +264,9 @@
             padding: 0;
             font-size: 16px;
             line-height: 1.6;
+            height: auto !important;
+            max-height: none !important;
+            overflow-y: hidden !important;
         }
         
         .ql-editor p {
@@ -907,6 +913,13 @@
             if (descDiv.classList.contains('description-hidden')) {
                 descDiv.classList.remove('description-hidden');
                 toggleBtn.textContent = '▲';
+                // Force editor to expand to full content height
+                const editor = descDiv.querySelector('.ql-editor');
+                if (editor) {
+                    editor.style.height = 'auto';
+                    editor.style.height = editor.scrollHeight + 'px';
+                    editor.style.overflowY = 'hidden';
+                }
             } else {
                 descDiv.classList.add('description-hidden');
                 toggleBtn.textContent = '▼';
@@ -920,6 +933,13 @@
             if (descDiv.classList.contains('description-hidden')) {
                 descDiv.classList.remove('description-hidden');
                 toggleBtn.textContent = '▲';
+                // Force editor to expand to full content height
+                const editor = descDiv.querySelector('.ql-editor');
+                if (editor) {
+                    editor.style.height = 'auto';
+                    editor.style.height = editor.scrollHeight + 'px';
+                    editor.style.overflowY = 'hidden';
+                }
             } else {
                 descDiv.classList.add('description-hidden');
                 toggleBtn.textContent = '▼';
@@ -941,7 +961,16 @@
                 toggleAllText.textContent = '▼ Expand All';
             } else {
                 // Expand all
-                allDescriptions.forEach(desc => desc.classList.remove('description-hidden'));
+                allDescriptions.forEach(desc => {
+                    desc.classList.remove('description-hidden');
+                    // Force editor to expand to full content height
+                    const editor = desc.querySelector('.ql-editor');
+                    if (editor) {
+                        editor.style.height = 'auto';
+                        editor.style.height = editor.scrollHeight + 'px';
+                        editor.style.overflowY = 'hidden';
+                    }
+                });
                 allToggles.forEach(toggle => toggle.textContent = '▲');
                 toggleAllText.textContent = '▲ Collapse All';
             }
