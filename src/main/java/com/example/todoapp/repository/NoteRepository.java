@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface NoteRepository extends JpaRepository<Note, Long> {
@@ -26,6 +27,14 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
 
     @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.deleted = false AND t.id = :tagId ORDER BY n.favorite DESC, n.updatedAt DESC")
     List<Note> findByTagId(@Param("tagId") Long tagId);
+
+    @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.deleted = false AND t.id IN :tagIds ORDER BY n.favorite DESC, n.updatedAt DESC")
+    List<Note> findByAnyTagIds(@Param("tagIds") Set<Long> tagIds);
+
+    @Query("SELECT n FROM Note n WHERE n.deleted = false AND " +
+           "(SELECT COUNT(DISTINCT t.id) FROM Note n2 JOIN n2.tags t WHERE n2 = n AND t.id IN :tagIds) = :tagCount " +
+           "ORDER BY n.favorite DESC, n.updatedAt DESC")
+    List<Note> findByAllTagIds(@Param("tagIds") Set<Long> tagIds, @Param("tagCount") long tagCount);
 
     @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.deleted = false AND t.name = :tagName ORDER BY n.favorite DESC, n.updatedAt DESC")
     List<Note> findByTagName(@Param("tagName") String tagName);

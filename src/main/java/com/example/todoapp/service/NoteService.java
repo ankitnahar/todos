@@ -379,31 +379,56 @@ public class NoteService {
     }
     
     public List<SearchResultDTO> findByTags(Set<Long> tagIds) {
+        return findByTags(tagIds, "AND"); // Default to AND
+    }
+    
+    public List<SearchResultDTO> findByTags(Set<Long> tagIds, String tagMatchMode) {
         List<SearchResultDTO> results = new ArrayList<>();
         
         if (tagIds == null || tagIds.isEmpty()) {
             return results;
         }
         
-        System.out.println("[FIND BY TAGS] Searching for tag IDs: " + tagIds);
+        boolean useAndMode = !"OR".equalsIgnoreCase(tagMatchMode);
+        System.out.println("[FIND BY TAGS] Searching for tag IDs: " + tagIds + " with mode: " + (useAndMode ? "AND" : "OR"));
         
-        // Find notes with these tags
-        for (Long tagId : tagIds) {
-            List<Note> notesWithTag = noteRepository.findByTagId(tagId);
-            System.out.println("[FIND BY TAGS] Found " + notesWithTag.size() + " notes with tag ID " + tagId);
-            for (Note note : notesWithTag) {
+        if (useAndMode && tagIds.size() > 1) {
+            // AND mode: find notes/subnotes that have ALL specified tags
+            List<Note> notesWithAllTags = noteRepository.findByAllTagIds(tagIds, tagIds.size());
+            System.out.println("[FIND BY TAGS] Found " + notesWithAllTags.size() + " notes with ALL tags (AND mode)");
+            for (Note note : notesWithAllTags) {
                 if (!note.getDeleted()) {
                     results.add(SearchResultDTO.fromNote(note));
                 }
             }
             
-            // Find subnotes with these tags
-            List<SubNote> subNotesWithTag = subNoteRepository.findByTagId(tagId);
-            System.out.println("[FIND BY TAGS] Found " + subNotesWithTag.size() + " subnotes with tag ID " + tagId);
-            for (SubNote subNote : subNotesWithTag) {
+            List<SubNote> subNotesWithAllTags = subNoteRepository.findByAllTagIds(tagIds, tagIds.size());
+            System.out.println("[FIND BY TAGS] Found " + subNotesWithAllTags.size() + " subnotes with ALL tags (AND mode)");
+            for (SubNote subNote : subNotesWithAllTags) {
                 Note parentNote = subNote.getNote();
                 if (parentNote != null && !parentNote.getDeleted()) {
                     results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+                }
+            }
+        } else {
+            // OR mode (or single tag): find notes/subnotes with ANY of the specified tags
+            for (Long tagId : tagIds) {
+                List<Note> notesWithTag = noteRepository.findByTagId(tagId);
+                System.out.println("[FIND BY TAGS] Found " + notesWithTag.size() + " notes with tag ID " + tagId);
+                for (Note note : notesWithTag) {
+                    if (!note.getDeleted()) {
+                        results.add(SearchResultDTO.fromNote(note));
+                    }
+                }
+                
+                // Find subnotes with these tags
+                List<SubNote> subNotesWithTag = subNoteRepository.findByTagId(tagId);
+                System.out.println("[FIND BY TAGS] Found " + subNotesWithTag.size() + " subnotes with tag ID " + tagId);
+                for (SubNote subNote : subNotesWithTag) {
+                    Note parentNote = subNote.getNote();
+                    if (parentNote != null && !parentNote.getDeleted()) {
+                        results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+                    }
                 }
             }
         }
@@ -532,6 +557,10 @@ public class NoteService {
     }
     
     public List<SearchResultDTO> findByFilters(String search, Set<Long> tagIds, Set<Long> bucketIds) {
+        return findByFilters(search, tagIds, bucketIds, "AND"); // Default to AND
+    }
+    
+    public List<SearchResultDTO> findByFilters(String search, Set<Long> tagIds, Set<Long> bucketIds, String tagMatchMode) {
         List<SearchResultDTO> results = new ArrayList<>();
         Set<String> resultKeys = new HashSet<>();
         
@@ -548,7 +577,7 @@ public class NoteService {
         
         // Filter by tags if provided
         if (tagIds != null && !tagIds.isEmpty()) {
-            List<SearchResultDTO> tagResults = findByTags(tagIds);
+            List<SearchResultDTO> tagResults = findByTags(tagIds, tagMatchMode);
             if (search != null && !search.isBlank()) {
                 // Intersect with existing results
                 Set<String> currentKeys = new HashSet<>(resultKeys);

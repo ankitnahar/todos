@@ -23,4 +23,11 @@ public interface SubNoteRepository extends JpaRepository<SubNote, Long> {
     
     @Query("SELECT DISTINCT s FROM SubNote s JOIN s.tags t WHERE t.id = :tagId")
     List<SubNote> findByTagId(@Param("tagId") Long tagId);
+
+    @Query("SELECT DISTINCT s FROM SubNote s JOIN s.tags t WHERE t.id IN :tagIds")
+    List<SubNote> findByAnyTagIds(@Param("tagIds") java.util.Set<Long> tagIds);
+
+    @Query("SELECT s FROM SubNote s WHERE " +
+           "(SELECT COUNT(DISTINCT t.id) FROM SubNote s2 JOIN s2.tags t WHERE s2 = s AND t.id IN :tagIds) = :tagCount")
+    List<SubNote> findByAllTagIds(@Param("tagIds") java.util.Set<Long> tagIds, @Param("tagCount") long tagCount);
 }

@@ -122,8 +122,42 @@
             margin-bottom: 1rem;
         }
         
-        .filter-card .row {
+        .filter-card .filter-row {
+            display: flex;
             align-items: flex-end;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-card .filter-col {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-card .filter-col-tags {
+            min-width: 180px;
+            flex: 1;
+            max-width: 220px;
+        }
+        
+        .filter-card .filter-col-buckets {
+            min-width: 160px;
+            flex: 1;
+            max-width: 200px;
+        }
+        
+        .filter-card .filter-col-track {
+            min-width: 100px;
+            width: 120px;
+        }
+        
+        .filter-card .filter-col-search {
+            flex: 2;
+            min-width: 200px;
+        }
+        
+        .filter-card .filter-col-actions {
+            min-width: 140px;
         }
         
         .filter-card label {
@@ -155,18 +189,7 @@
             display: flex;
             justify-content: flex-start;
             gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .filter-actions {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .filter-actions label {
-            text-align: left;
-            width: 100%;
+            flex-wrap: nowrap;
         }
 
         .filter-buttons .btn {
@@ -198,6 +221,59 @@
             background: #f8f9fa;
             border-color: #adb5bd;
             color: #495057;
+        }
+        
+        .tag-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        
+        .tag-label-row label {
+            margin-bottom: 0 !important;
+        }
+        
+        .tag-match-mode {
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .tag-match-mode .btn-group {
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .tag-mode-btn {
+            padding: 0.1rem 0.4rem;
+            font-size: 0.65rem;
+            font-weight: 600;
+            border: 1px solid #667eea !important;
+            background: white;
+            color: #667eea;
+            transition: all 0.2s;
+            line-height: 1.2;
+        }
+        
+        .tag-mode-btn:first-child {
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .tag-mode-btn:last-child {
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+            border-left: none !important;
+        }
+        
+        .tag-mode-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .tag-mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea !important;
         }
         
         .applied-filters {
@@ -693,9 +769,22 @@
 
         <!-- Filter Card -->
         <div class="filter-card">
-            <form method="get" class="row gx-1 gy-2">
-                <div class="col-lg-2 col-md-4">
-                    <label for="tags" class="form-label">Tags</label>
+            <form method="get" class="filter-row">
+                <div class="filter-col filter-col-tags">
+                    <div class="tag-label-row">
+                        <label for="tags">Tags</label>
+                        <div class="tag-match-mode">
+                            <input type="hidden" id="tagMatchMode" name="tagMatchMode" th:value="${selectedTagMatchMode ?: 'AND'}">
+                            <div class="btn-group" role="group" aria-label="Tag match mode">
+                                <button type="button" class="btn tag-mode-btn" 
+                                        th:classappend="${selectedTagMatchMode == null || selectedTagMatchMode == 'AND'} ? ' active' : ''"
+                                        data-mode="AND" onclick="setTagMatchMode('AND')" title="Match ALL selected tags">AND</button>
+                                <button type="button" class="btn tag-mode-btn"
+                                        th:classappend="${selectedTagMatchMode == 'OR'} ? ' active' : ''"
+                                        data-mode="OR" onclick="setTagMatchMode('OR')" title="Match ANY selected tag">OR</button>
+                            </div>
+                        </div>
+                    </div>
                     <select id="tags" name="tagIds" class="form-select" multiple>
                         <option th:each="tag : ${allTags}"
                                 th:value="${tag.id}"
@@ -703,8 +792,8 @@
                                 th:selected="${selectedTagIds.contains(tag.id)}"></option>
                     </select>
                 </div>
-                <div class="col-lg-2 col-md-3">
-                    <label for="buckets" class="form-label">Buckets</label>
+                <div class="filter-col filter-col-buckets">
+                    <label for="buckets">Buckets</label>
                     <select id="buckets" name="bucketIds" class="form-select" multiple>
                         <option th:each="bucket : ${allBuckets}"
                                 th:value="${bucket.id}"
@@ -712,21 +801,21 @@
                                 th:selected="${selectedBucketIds.contains(bucket.id)}"></option>
                     </select>
                 </div>
-                <div class="col-lg-2 col-md-3">
-                    <label for="trackStatus" class="form-label">Track</label>
+                <div class="filter-col filter-col-track">
+                    <label for="trackStatus">Track</label>
                     <select id="trackStatus" name="trackStatus" class="form-select" onchange="this.form.submit()">
                         <option value="all" th:selected="${selectedTrackStatus == 'all'}">All</option>
                         <option value="tracked" th:selected="${selectedTrackStatus == 'tracked'}">Tracked</option>
                         <option value="untracked" th:selected="${selectedTrackStatus == 'untracked'}">Untracked</option>
                     </select>
                 </div>
-                <div class="col-lg-4 col-md-4 flex-grow-1">
-                    <label for="search" class="form-label">Search</label>
+                <div class="filter-col filter-col-search">
+                    <label for="search">Search</label>
                     <input type="search" id="search" name="search" placeholder="Search notes..." 
                            class="form-control" th:value="${search}"/>
                 </div>
-                <div class="col-lg-2 col-md-4 filter-actions">
-                    <label class="form-label">Actions</label>
+                <div class="filter-col filter-col-actions">
+                    <label>Actions</label>
                     <div class="filter-buttons">
                         <button type="submit" class="btn btn-primary btn-sm">🔍 Filter</button>
                         <a href="/notes" class="btn btn-outline-secondary btn-sm">Clear</a>
@@ -938,6 +1027,19 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
+        // Tag match mode toggle function
+        function setTagMatchMode(mode) {
+            document.getElementById('tagMatchMode').value = mode;
+            // Update active state on buttons
+            document.querySelectorAll('.tag-mode-btn').forEach(btn => {
+                if (btn.getAttribute('data-mode') === mode) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
         $(document).ready(function() {
             // Initialize Select2 for tag dropdown
             $('#tags').select2({

@@ -47,6 +47,7 @@ public class NoteController {
                            @RequestParam(required = false) List<Long> bucketIds,
                            @RequestParam(required = false) String trackStatus,
                            @RequestParam(required = false) String quickFilter,
+                           @RequestParam(required = false, defaultValue = "AND") String tagMatchMode,
                            HttpServletRequest request) {
         
         // Get all tags and buckets for the filter dropdown
@@ -62,7 +63,7 @@ public class NoteController {
             // Use combined filter method that handles search, tags, and buckets together
             Set<Long> tagIdSet = tagIds != null ? new HashSet<>(tagIds) : Collections.emptySet();
             Set<Long> bucketIdSet = bucketIds != null ? new HashSet<>(bucketIds) : Collections.emptySet();
-            List<SearchResultDTO> searchResults = noteService.findByFilters(search, tagIdSet, bucketIdSet);
+            List<SearchResultDTO> searchResults = noteService.findByFilters(search, tagIdSet, bucketIdSet, tagMatchMode);
             if (trackStatus != null && !trackStatus.isBlank() && !"all".equalsIgnoreCase(trackStatus)) {
                 searchResults = searchResults.stream()
                     .filter(result -> matchesTrackStatus(result.getLastTrackedDate(), trackStatus))
@@ -88,13 +89,16 @@ public class NoteController {
         model.addAttribute("selectedTagIds", tagIdSet);
         model.addAttribute("selectedBucketIds", bucketIdSet);
         model.addAttribute("selectedTrackStatus", trackStatus != null ? trackStatus : "all");
+        model.addAttribute("selectedTagMatchMode", tagMatchMode != null ? tagMatchMode : "AND");
         
         // Build applied filters label
         StringBuilder filterLabel = new StringBuilder();
         if (search != null && !search.isBlank()) filterLabel.append("Search: ").append(search).append("; ");
-        if (tagIdSet != null && !tagIdSet.isEmpty()) filterLabel.append("Tags: ").append(
+        if (tagIdSet != null && !tagIdSet.isEmpty()) {
+            filterLabel.append("Tags (").append(tagMatchMode != null ? tagMatchMode : "AND").append("): ").append(
                 allTags.stream().filter(t -> tagIdSet.contains(t.getId())).map(Tag::getName)
                         .collect(Collectors.joining(", "))).append("; ");
+        }
         if (bucketIdSet != null && !bucketIdSet.isEmpty()) {
             String bucketNames = allBuckets.stream()
                     .filter(b -> bucketIdSet.contains(b.getId()))
