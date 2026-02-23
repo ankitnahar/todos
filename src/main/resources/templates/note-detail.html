@@ -174,9 +174,14 @@
         .sub-note-item {
             border: none;
             border-radius: 0;
-            margin-bottom: 0;
+            margin-bottom: 0.75rem;
             overflow: hidden;
             transition: background-color 0.2s ease;
+            padding: 0;
+        }
+        
+        .sub-note-item:last-child {
+            margin-bottom: 0;
         }
         
         .sub-note-item:hover {
@@ -185,13 +190,14 @@
         
         .sub-note-header {
             background: #ffffff;
-            padding: 0.5rem 1rem;
+            padding: 0.75rem 1rem;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border: 2px solid #667eea;
             border-radius: 6px;
+            min-height: 52px;
         }
         
         .sub-note-header:hover {
@@ -351,6 +357,12 @@
                                 th:selected="${note.bucketId != null && b.id.equals(note.bucketId)}"
                                 th:style="${note.bucketId != null && b.id.equals(note.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                     </select>
+                    <a th:href="@{/notes/{id}/edit(id=${note.id})}" 
+                       class="btn btn-sm btn-outline-primary" 
+                       title="Edit Note"
+                       style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
+                        ✏️
+                    </a>
                 </div>
             </div>
             <div class="card-body">
@@ -410,7 +422,7 @@
                                                     onclick="toggleTrackSubNote(this, event)"
                                                     title="Track for Today">
                                                 <span th:if="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
-                                                <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                                <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">⭕</span>
                                             </button>
                                             
                                             <!-- Bucket dropdown -->
@@ -425,6 +437,16 @@
                                                         th:selected="${b.id.equals(subNote.bucketId)}"
                                                         th:style="${b.id.equals(subNote.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                                             </select>
+                                            
+                                            <!-- Edit subnote button -->
+                                            <a th:if="${subNote.linkedNoteId == null}"
+                                               th:href="@{/notes/{id}/edit(id=${note.id}, subNoteId=${subNote.id})}"
+                                               class="btn btn-sm btn-outline-primary" 
+                                               onclick="event.stopPropagation()"
+                                               title="Edit Sub-Note"
+                                               style="padding: 0.2rem 0.4rem; font-size: 0.8rem;">
+                                                ✏️
+                                            </a>
 
                                                 <select th:if="${moveTargets != null && !moveTargets.isEmpty()}"
                                                     class="form-select form-select-sm"
@@ -748,7 +770,7 @@
                     // Toggle the visual state and update button text
                     if (isCurrentlyTracked) {
                         button.classList.remove('active');
-                        button.innerHTML = '📌';
+                        button.innerHTML = '⭕';
                     } else {
                         button.classList.add('active');
                         button.innerHTML = '✅';

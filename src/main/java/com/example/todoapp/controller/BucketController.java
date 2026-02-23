@@ -62,16 +62,17 @@ public class BucketController {
             // Group subnotes by parent note for grouped view
             Map<Long, List<SubNote>> noteSubNotesMap = new HashMap<>();
 
-            // Ensure notes without subnotes still show up in grouped view
+            // Get notes with this bucket - but for nested notes (parents with subnotes),
+            // the bucket on parent is meaningless, so only include non-nested notes
             List<Note> notesInBucket = noteService.findByBucketId(bucket.getId());
             List<Note> noteOnly = new java.util.ArrayList<>();
             for (Note note : notesInBucket) {
                 if (note != null && (note.getDeleted() == null || !note.getDeleted())) {
-                    parentNotes.putIfAbsent(note.getId(), note);
-                    noteSubNotesMap.putIfAbsent(note.getId(), new java.util.ArrayList<>());
-
-                    // Keep only non-nested notes for flat view
+                    // Only include note if it's NOT nested (no subnotes)
+                    // For nested notes, bucket on parent is meaningless - only subnote buckets matter
                     if (!note.isNested()) {
+                        parentNotes.putIfAbsent(note.getId(), note);
+                        noteSubNotesMap.putIfAbsent(note.getId(), new java.util.ArrayList<>());
                         noteOnly.add(note);
                     }
                 }

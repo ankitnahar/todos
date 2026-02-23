@@ -7,6 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -299,13 +300,24 @@
         
         .note-item {
             display: flex;
-            align-items: center;
-            padding: 0.45rem 1rem;
-            border-bottom: none;
+            flex-direction: column;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e9ecef;
             transition: background-color 0.2s ease, transform 0.2s ease;
             position: relative;
             cursor: pointer;
             overflow: visible;
+            min-height: 48px;
+        }
+        
+        .note-main-row {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .note-item:last-child {
+            border-bottom: none;
         }
 
         .note-item.tracked-today {
@@ -354,6 +366,57 @@
         
         .subnote-result:hover {
             background-color: #e3f2fd !important;
+        }
+        
+        .description-hidden {
+            display: none;
+        }
+        
+        .result-description {
+            padding: 0.75rem 1rem;
+            background-color: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            margin-top: 0.5rem;
+        }
+        
+        .result-toggle {
+            cursor: pointer;
+            color: #6c757d;
+            font-size: 1rem;
+            font-weight: normal;
+            user-select: none;
+            transition: transform 0.2s;
+            min-width: 20px;
+            text-align: center;
+            margin-left: 0.5rem;
+        }
+        
+        .result-toggle:hover {
+            color: #495057;
+        }
+        
+        .expand-collapse-controls {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .ql-editor {
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.6;
+            height: auto !important;
+            max-height: none !important;
+            overflow-y: hidden !important;
+        }
+        
+        .ql-editor p {
+            margin-bottom: 0.5rem;
+        }
+        
+        .ql-container.ql-snow {
+            border: none;
         }
         
         .parent-note-link a:hover {
@@ -834,13 +897,23 @@
         </div>
 
         <!-- Search Results (notes + subnotes) -->
-        <div class="notes-list" th:if="${!searchResults.empty}">
+        <div th:if="${!searchResults.empty}">
+            <div class="expand-collapse-controls">
+                <button id="expandAllBtn" class="btn btn-sm btn-outline-secondary" onclick="expandAllDescriptions()">
+                    ▼ Expand All
+                </button>
+                <button id="collapseAllBtn" class="btn btn-sm btn-outline-secondary" onclick="collapseAllDescriptions()">
+                    ▲ Collapse All
+                </button>
+            </div>
+            <div class="notes-list">
               <div th:each="result, iterStat : ${searchResults}" 
                   class="note-item"
                   th:classappend="${(result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')) ? 'tracked-today' : ''} + (${result.type == 'SUBNOTE' ? ' subnote-result' : ''})"
                  th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}"
                  th:attr="data-note-url=${result.type == 'NOTE' ? '/notes/' + result.id : '/notes/' + result.parentNoteId}"
                  ondblclick="handleNoteDoubleClick(event, this)">
+                <div class="note-main-row">
                 <div class="note-left">
                     <button th:if="${result.type == 'NOTE'}"
                             th:class="${'favorite-btn ' + (result.favorite ? 'active' : '')}" 
@@ -873,7 +946,7 @@
                                 title="Track for Today"
                                 style="font-size: 1.1em;">
                             <span th:if="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
-                            <span th:unless="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                            <span th:unless="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">⭕</span>
                         </button>
                         <!-- Bucket dropdown for NOTE -->
                         <select th:if="${result.type == 'NOTE'}" 
@@ -908,6 +981,11 @@
                                 <a class="dropdown-item delete-btn" th:href="@{/notes/{id}/delete(id=${result.id})}" onclick="return confirm('Delete this note?')"><span class="menu-icon">🗑️</span>Delete</a>
                             </div>
                         </div>
+                        <!-- Toggle button for NOTE description -->
+                        <span th:if="${result.type == 'NOTE' && result.details != null && !#strings.isEmpty(#strings.trim(result.details)) && result.details != '<p><br></p>'}"
+                              class="result-toggle"
+                              th:id="'toggle-' + ${result.type} + '-' + ${result.id}"
+                              th:onclick="'toggleResultDescription(\\'' + ${result.type} + '-' + ${result.id} + '\\')'">▼</span>
                         
                         <!-- SUBNOTE actions - view and edit parent note only -->
                         <button th:if="${result.type == 'SUBNOTE'}" 
@@ -918,7 +996,7 @@
                                 title="Track for Today"
                                 style="font-size: 1.1em;">
                             <span th:if="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
-                            <span th:unless="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                            <span th:unless="${result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">⭕</span>
                         </button>
                         <!-- Bucket dropdown for SUBNOTE -->
                         <select th:if="${result.type == 'SUBNOTE'}" 
@@ -934,9 +1012,9 @@
                                     th:style="${result.bucketId != null && b.id.equals(result.bucketId)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                         </select>
                         <a th:if="${result.type == 'SUBNOTE'}" 
-                           th:href="@{/notes/{id}/edit(id=${result.parentNoteId})}" 
+                           th:href="@{/notes/{id}/edit(id=${result.parentNoteId}, subNoteId=${result.id})}" 
                            class="action-btn edit-btn" 
-                           title="Edit Parent Note">
+                           title="Edit Sub-Note">
                             ✏️
                         </a>
                         <div th:if="${result.type == 'SUBNOTE'}" class="dropdown action-menu">
@@ -947,8 +1025,22 @@
                                 <a class="dropdown-item view-btn" th:href="@{/notes/{id}(id=${result.parentNoteId})}"><span class="menu-icon">👁️</span>View Parent</a>
                             </div>
                         </div>
+                        <!-- Toggle button for SUBNOTE description -->
+                        <span th:if="${result.type == 'SUBNOTE' && result.details != null && !#strings.isEmpty(#strings.trim(result.details)) && result.details != '<p><br></p>'}"
+                              class="result-toggle"
+                              th:id="'toggle-' + ${result.type} + '-' + ${result.id}"
+                              th:onclick="'toggleResultDescription(\\'' + ${result.type} + '-' + ${result.id} + '\\')'">▼</span>
                     </div>
                 </div>
+                </div>
+                <!-- Description section (collapsed by default) -->
+                <div th:if="${result.details != null && !#strings.isEmpty(#strings.trim(result.details)) && result.details != '<p><br></p>'}"
+                     class="result-description description-hidden"
+                     th:id="'desc-' + ${result.type} + '-' + ${result.id}">
+                    <div th:id="'viewer-' + ${result.type} + '-' + ${result.id}" style="min-height: 30px;"></div>
+                    <textarea th:id="'content-' + ${result.type} + '-' + ${result.id}" style="display: none;" th:text="${result.details}"></textarea>
+                </div>
+            </div>
             </div>
         </div>
 
@@ -960,6 +1052,7 @@
                  th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}"
                  th:attr="data-note-url=@{/notes/{id}(id=${note.id})}"
                  ondblclick="handleNoteDoubleClick(event, this)">
+                <div class="note-main-row">
                 <div class="note-left">
                     <button th:class="${'favorite-btn ' + (note.favorite ? 'active' : '')}" 
                             th:attr="data-note-id=${note.id}"
@@ -983,7 +1076,7 @@
                                 title="Track for Today"
                                 style="font-size: 1.1em;">
                             <span th:if="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
-                            <span th:unless="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                            <span th:unless="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">⭕</span>
                         </button>
                         <!-- Bucket dropdown -->
                         <select class="form-select form-select-sm" 
@@ -1018,6 +1111,7 @@
                         </div>
                     </div>
                 </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1026,7 +1120,90 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <script>
+        // Initialize Quill viewers for all result descriptions
+        document.addEventListener('DOMContentLoaded', function() {
+            const textareas = document.querySelectorAll('[id^="content-"]');
+            textareas.forEach(textarea => {
+                const content = textarea.value;
+                if (!content || content.trim() === '' || content === '<p><br></p>') {
+                    return;
+                }
+
+                const id = textarea.id.replace('content-', '');
+                const viewerDiv = document.getElementById('viewer-' + id);
+                if (viewerDiv) {
+                    const quill = new Quill('#viewer-' + id, {
+                        theme: 'snow',
+                        readOnly: true,
+                        modules: {
+                            toolbar: false
+                        }
+                    });
+                    quill.root.innerHTML = content;
+                }
+            });
+        });
+        
+        // Toggle individual result description
+        function toggleResultDescription(resultId) {
+            const descDiv = document.getElementById('desc-' + resultId);
+            const toggleBtn = document.getElementById('toggle-' + resultId);
+            
+            if (!descDiv || !toggleBtn) return;
+            
+            if (descDiv.classList.contains('description-hidden')) {
+                descDiv.classList.remove('description-hidden');
+                toggleBtn.textContent = '▲';
+                // Force editor to expand to full content height
+                const editor = descDiv.querySelector('.ql-editor');
+                if (editor) {
+                    editor.style.height = 'auto';
+                    editor.style.height = editor.scrollHeight + 'px';
+                    editor.style.overflowY = 'hidden';
+                }
+            } else {
+                descDiv.classList.add('description-hidden');
+                toggleBtn.textContent = '▼';
+            }
+        }
+        
+        // Expand all descriptions
+        function expandAllDescriptions() {
+            const allDescriptions = document.querySelectorAll('.result-description');
+            const allToggles = document.querySelectorAll('.result-toggle');
+            
+            allDescriptions.forEach(desc => {
+                desc.classList.remove('description-hidden');
+                // Force editor to expand to full content height
+                const editor = desc.querySelector('.ql-editor');
+                if (editor) {
+                    editor.style.height = 'auto';
+                    editor.style.height = editor.scrollHeight + 'px';
+                    editor.style.overflowY = 'hidden';
+                }
+            });
+            
+            allToggles.forEach(toggle => {
+                toggle.textContent = '▲';
+            });
+        }
+        
+        // Collapse all descriptions
+        function collapseAllDescriptions() {
+            const allDescriptions = document.querySelectorAll('.result-description');
+            const allToggles = document.querySelectorAll('.result-toggle');
+            
+            allDescriptions.forEach(desc => {
+                desc.classList.add('description-hidden');
+            });
+            
+            allToggles.forEach(toggle => {
+                toggle.textContent = '▼';
+            });
+        }
+        
         // Tag match mode toggle function
         function setTagMatchMode(mode) {
             document.getElementById('tagMatchMode').value = mode;
@@ -1118,7 +1295,7 @@
                     if (isCurrentlyTracked) {
                         button.classList.remove('active');
                         button.closest('.note-item').classList.remove('tracked-today');
-                        button.textContent = '📌';
+                        button.textContent = '⭕';
                     } else {
                         button.classList.add('active');
                         button.closest('.note-item').classList.add('tracked-today');

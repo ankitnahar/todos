@@ -125,6 +125,11 @@
             padding: 0;
             margin-bottom: 0;
             transition: all 0.2s;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .sub-note-item:last-child {
+            border-bottom: none;
         }
 
         .sub-note-item.tracked-today {
@@ -140,9 +145,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.5rem 1rem;
+            padding: 0.75rem 1rem;
             cursor: pointer;
             background: transparent;
+            min-height: 48px;
         }
         
         .sub-note-header:hover {
@@ -480,7 +486,7 @@
                             type="button" 
                             onclick="toggleTrackStatusDropdown()" 
                             style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
-                        📌 Track Status
+                        ⭕ Track Status
                     </button>
                     <div id="trackStatusFilterDropdown" 
                          class="dropdown-menu" 
@@ -525,6 +531,32 @@
                         </th:block>
                     </div>
                 </div>
+                
+                <!-- Note Filter Multi-Select Dropdown -->
+                <div class="dropdown" style="position: relative;">
+                    <button class="btn btn-outline-secondary dropdown-toggle" 
+                            id="noteFilterBtn"
+                            type="button" 
+                            onclick="toggleNoteDropdown()" 
+                            style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
+                        📝 Select Notes
+                    </button>
+                    <div id="noteFilterDropdown" 
+                         class="dropdown-menu" 
+                         style="display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #dee2e6; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 250px; max-height: 400px; overflow-y: auto; padding: 0.5rem;">
+                        <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                            <input type="checkbox" id="noteSelectAll" onchange="toggleAllNotes()" style="margin-right: 0.5rem;" checked>
+                            <strong>All Notes</strong>
+                        </label>
+                        <div style="border-top: 1px solid #dee2e6; margin: 0.25rem 0;"></div>
+                        <th:block th:each="noteEntry : ${parentNotes}">
+                            <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" th:title="${noteEntry.value.name}">
+                                <input type="checkbox" class="note-checkbox" th:value="${noteEntry.key}" th:data-name="${noteEntry.value.name}" onchange="updateNoteFilter()" style="margin-right: 0.5rem;" checked>
+                                <span th:text="${#strings.abbreviate(noteEntry.value.name, 35)}">Note</span>
+                            </label>
+                        </th:block>
+                    </div>
+                </div>
             </div>
             <button id="copyTitlesBtn" class="btn btn-info" onclick="copyAllVisibleTitles()" title="Copy all visible sub-note titles to clipboard" style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
                 📋 Copy Titles
@@ -553,7 +585,7 @@
                     <!-- Grouped by Note View -->
                     <div th:if="${groupByNote}" class="sub-notes-container">
                         <th:block>
-                            <div th:each="noteEntry : ${noteSubNotesMap}" class="note-group">
+                            <div th:each="noteEntry : ${noteSubNotesMap}" class="note-group" th:data-note-id="${noteEntry.key}">
                                 <div class="note-group-header" th:data-isFavorite="${parentNotes.get(noteEntry.key).favorite}">
                                     <span class="note-group-title">
                                         📝 <span th:text="${parentNotes.get(noteEntry.key).name}">Note Name</span>
@@ -569,7 +601,8 @@
                                      th:classappend="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
                                      th:data-parentisfavorite="${subNote.note != null && subNote.note.favorite}"
                                      th:data-subnote-id="${subNote.id}"
-                                     th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">
+                                     th:data-parent-note-id="${noteEntry.key}"
+                                     th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">>
                                     <div class="sub-note-header"
                                          th:onclick="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null} ? 'toggleDescription(' + ${subNote.id} + ')' : ''">
                                         <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
@@ -582,7 +615,7 @@
                                                     onclick="toggleTrackSubNote(this, event)"
                                                     title="Track for Today">
                                                 <span th:if="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
-                                                <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                                <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">⭕</span>
                                             </button>
                                             <select class="form-select form-select-sm bucket-selector" 
                                                     th:data-subnote-id="${subNote.id}"
@@ -595,6 +628,14 @@
                                                         th:selected="${b.id.equals(bucket.id)}"
                                                         th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                                             </select>
+                                            <a th:if="${subNote.linkedNoteId == null}"
+                                               th:href="@{/notes/{id}/edit(id=${subNote.note.id}, subNoteId=${subNote.id})}"
+                                               class="btn btn-sm btn-outline-primary"
+                                               onclick="event.stopPropagation()"
+                                               title="Edit Sub-Note"
+                                               style="padding: 0.2rem 0.4rem; font-size: 0.8rem; margin-right: 0.25rem;">
+                                                ✏️
+                                            </a>
                                             <form th:action="@{/notes/{noteId}/subnote/convert/{subNoteId}(noteId=${subNote.note.id},subNoteId=${subNote.id})}" 
                                                   method="post" style="display: inline;" class="action-right"
                                                   th:onsubmit="'return confirm(\'Convert this sub-note to a main note?\')'">
@@ -641,7 +682,7 @@
                                                     onclick="toggleTrackNote(this, event)"
                                                     title="Track for Today">
                                                 <span th:if="${parentNotes.get(noteEntry.key).lastTrackedDate != null && #temporals.format(parentNotes.get(noteEntry.key).lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
-                                                <span th:unless="${parentNotes.get(noteEntry.key).lastTrackedDate != null && #temporals.format(parentNotes.get(noteEntry.key).lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                                <span th:unless="${parentNotes.get(noteEntry.key).lastTrackedDate != null && #temporals.format(parentNotes.get(noteEntry.key).lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">⭕</span>
                                             </button>
                                             <select class="form-select form-select-sm bucket-selector" 
                                                     th:data-note-id="${noteEntry.key}"
@@ -654,6 +695,13 @@
                                                         th:selected="${b.id.equals(bucket.id)}"
                                                         th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                                             </select>
+                                            <a th:href="@{/notes/{id}/edit(id=${noteEntry.key})}"
+                                               class="btn btn-sm btn-outline-primary"
+                                               onclick="event.stopPropagation()"
+                                               title="Edit Note"
+                                               style="padding: 0.2rem 0.4rem; font-size: 0.8rem; margin-right: 0.25rem;">
+                                                ✏️
+                                            </a>
                                             <span class="sub-note-toggle" 
                                                   th:id="'note-toggle-' + ${noteEntry.key}"
                                                   th:style="${(parentNotes.get(noteEntry.key).details == null || #strings.isEmpty(#strings.trim(parentNotes.get(noteEntry.key).details)) || parentNotes.get(noteEntry.key).details == '<p><br></p>')} ? 'visibility: hidden;' : ''">▼</span>
@@ -678,6 +726,7 @@
                              th:classappend="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
                              th:data-parentisfavorite="${subNote.note != null && subNote.note.favorite}"
                              th:data-subnote-id="${subNote.id}"
+                             th:data-parent-note-id="${subNote.note != null ? subNote.note.id : ''}"
                              th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">
                             <div class="sub-note-header"
                                  th:onclick="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null} ? 'toggleDescription(' + ${subNote.id} + ')' : ''">
@@ -698,7 +747,7 @@
                                             onclick="toggleTrackSubNote(this, event)"
                                             title="Track for Today">
                                         <span th:if="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
-                                        <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                        <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">⭕</span>
                                     </button>
                                     <select class="form-select form-select-sm bucket-selector" 
                                             th:data-subnote-id="${subNote.id}"
@@ -711,6 +760,14 @@
                                                 th:selected="${b.id.equals(bucket.id)}"
                                                 th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                                     </select>
+                                    <a th:if="${subNote.linkedNoteId == null}"
+                                       th:href="@{/notes/{id}/edit(id=${subNote.note.id}, subNoteId=${subNote.id})}"
+                                       class="btn btn-sm btn-outline-primary"
+                                       onclick="event.stopPropagation()"
+                                       title="Edit Sub-Note"
+                                       style="padding: 0.2rem 0.4rem; font-size: 0.8rem; margin-right: 0.25rem;">
+                                        ✏️
+                                    </a>
                                     <form th:action="@{/notes/{noteId}/subnote/convert/{subNoteId}(noteId=${subNote.note.id},subNoteId=${subNote.id})}" 
                                           method="post" style="display: inline;" class="action-right"
                                           th:onsubmit="'return confirm(\'Convert this sub-note to a main note?\')'">
@@ -744,6 +801,7 @@
                              class="sub-note-item note-only-item"
                              th:classappend="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
                              th:data-parentisfavorite="${note.favorite}"
+                             th:data-parent-note-id="${note.id}"
                              data-note-only="true">
                             <div class="sub-note-header"
                                  th:onclick="${note.details != null && !#strings.isEmpty(#strings.trim(note.details)) && note.details != '<p><br></p>'} ? 'toggleNoteDescription(' + ${note.id} + ')' : ''">
@@ -757,7 +815,7 @@
                                             onclick="toggleTrackNote(this, event)"
                                             title="Track for Today">
                                         <span th:if="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
-                                        <span th:unless="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">📌</span>
+                                        <span th:unless="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">⭕</span>
                                     </button>
                                     <select class="form-select form-select-sm bucket-selector" 
                                             th:data-note-id="${note.id}"
@@ -770,6 +828,13 @@
                                                 th:selected="${b.id.equals(bucket.id)}"
                                                 th:style="${b.id.equals(bucket.id)} ? 'background-color: ' + ${b.color} + '20; font-weight: 600; color: ' + ${b.color} + ';' : ''">Bucket</option>
                                     </select>
+                                    <a th:href="@{/notes/{id}/edit(id=${note.id})}"
+                                       class="btn btn-sm btn-outline-primary"
+                                       onclick="event.stopPropagation()"
+                                       title="Edit Note"
+                                       style="padding: 0.2rem 0.4rem; font-size: 0.8rem; margin-right: 0.25rem;">
+                                        ✏️
+                                    </a>
                                     <span class="sub-note-toggle" 
                                           th:id="'note-toggle-' + ${note.id}"
                                           th:style="${(note.details == null || #strings.isEmpty(#strings.trim(note.details)) || note.details == '<p><br></p>')} ? 'visibility: hidden;' : ''">▼</span>
@@ -1057,7 +1122,7 @@
                     if (isCurrentlyTracked) {
                         button.classList.remove('active');
                         subNoteItem.classList.remove('tracked-today');
-                        button.innerHTML = '📌';
+                        button.innerHTML = '⭕';
                     } else {
                         button.classList.add('active');
                         subNoteItem.classList.add('tracked-today');
@@ -1134,7 +1199,7 @@
                     if (isCurrentlyTracked) {
                         button.classList.remove('active');
                         noteItem.classList.remove('tracked-today');
-                        button.innerHTML = '📌';
+                        button.innerHTML = '⭕';
                     } else {
                         button.classList.add('active');
                         noteItem.classList.add('tracked-today');
@@ -1340,11 +1405,13 @@
                 filterAllBtn.style.color = '#667eea';
             }
             
+            // Store preference in localStorage FIRST (before filters read it)
+            localStorage.setItem('consolidatedViewFilter', filterType);
+            
             // Re-apply all filters
             applyTrackStatusFilter();
-            
-            // Store preference in localStorage
-            localStorage.setItem('consolidatedViewFilter', filterType);
+            updateBucketCountSummary();
+            updateAvailableNotes();
         }
         
         // Toggle track status filter dropdown
@@ -1369,15 +1436,16 @@
             // Update button text
             const btn = document.getElementById('trackStatusFilterBtn');
             if (selectedStatus === 'untracked') {
-                btn.textContent = '📌 Untracked';
+                btn.textContent = '⭕ Untracked';
             } else if (selectedStatus === 'tracked') {
                 btn.textContent = '✅ Tracked';
             } else {
-                btn.textContent = '📌 Track Status';
+                btn.textContent = '⭕ Track Status';
             }
             
             applyTrackStatusFilter();
             updateBucketCountSummary(); // Call after filter to ensure counts are updated
+            updateAvailableNotes(); // Update notes dropdown based on current filters
             localStorage.setItem('consolidatedViewTrackStatusFilter', selectedStatus);
         }
         
@@ -1423,8 +1491,18 @@
                 const itemBucketId = item.closest('fieldset.bucket-fieldset')?.getAttribute('data-bucket-id');
                 let bucketFilterMatches = selectedBuckets.length === 0 || selectedBuckets.includes(itemBucketId);
                 
+                // Check note filter
+                const noteCheckboxes = document.querySelectorAll('.note-checkbox');
+                const selectedNotes = Array.from(noteCheckboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value);
+                const noteGroup = item.closest('.note-group');
+                // Get note ID from note group (grouped view) or data attribute (flat view)
+                const noteId = noteGroup ? noteGroup.getAttribute('data-note-id') : item.getAttribute('data-parent-note-id');
+                let noteFilterMatches = selectedNotes.length === 0 || selectedNotes.length === noteCheckboxes.length || (noteId && selectedNotes.includes(noteId));
+                
                 // Show item only if all filters match
-                item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches) ? 'block' : 'none';
+                item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches && noteFilterMatches) ? 'block' : 'none';
             });
 
             updateNoteGroupVisibility();
@@ -1498,6 +1576,7 @@
             
             applyBucketFilter();
             updateBucketCountSummary(); // Call after applyBucketFilter to ensure visibility is updated
+            updateAvailableNotes(); // Update notes dropdown based on current filters
             localStorage.setItem('consolidatedViewBucketFilter', JSON.stringify(selectedBuckets));
         }
         
@@ -1550,8 +1629,18 @@
                 const itemBucketId = item.closest('fieldset.bucket-fieldset')?.getAttribute('data-bucket-id');
                 let bucketFilterMatches = selectedBuckets.length === 0 || selectedBuckets.includes(itemBucketId);
                 
+                // Check note filter
+                const noteCheckboxes = document.querySelectorAll('.note-checkbox');
+                const selectedNotes = Array.from(noteCheckboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value);
+                const noteGroup = item.closest('.note-group');
+                // Get note ID from note group (grouped view) or data attribute (flat view)
+                const noteId = noteGroup ? noteGroup.getAttribute('data-note-id') : item.getAttribute('data-parent-note-id');
+                let noteFilterMatches = selectedNotes.length === 0 || selectedNotes.length === noteCheckboxes.length || (noteId && selectedNotes.includes(noteId));
+                
                 // Show item only if all filters match
-                item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches) ? 'block' : 'none';
+                item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches && noteFilterMatches) ? 'block' : 'none';
             });
 
             updateNoteGroupVisibility();
@@ -1577,11 +1666,218 @@
 
         function updateNoteGroupVisibility() {
             const noteGroups = document.querySelectorAll('.note-group');
+            const noteCheckboxes = document.querySelectorAll('.note-checkbox');
+            const selectedNotes = Array.from(noteCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            const showAllNotes = selectedNotes.length === 0 || selectedNotes.length === noteCheckboxes.length;
+            
             noteGroups.forEach(group => {
+                const noteId = group.getAttribute('data-note-id');
+                
+                // First check if note is selected in filter
+                if (!showAllNotes && noteId && !selectedNotes.includes(noteId)) {
+                    group.style.display = 'none';
+                    return;
+                }
+                
+                // Then check if any items are visible
                 const items = group.querySelectorAll('.sub-note-item');
                 const visibleItems = Array.from(items).filter(item => item.style.display !== 'none');
                 group.style.display = visibleItems.length === 0 ? 'none' : 'block';
             });
+        }
+        
+        // Toggle note filter dropdown
+        function toggleNoteDropdown() {
+            const dropdown = document.getElementById('noteFilterDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            
+            // Close when clicking outside
+            document.addEventListener('click', function closeNoteDropdown(event) {
+                const btn = document.getElementById('noteFilterBtn');
+                const menu = document.getElementById('noteFilterDropdown');
+                if (!btn.contains(event.target) && !menu.contains(event.target)) {
+                    menu.style.display = 'none';
+                    document.removeEventListener('click', closeNoteDropdown);
+                }
+            });
+        }
+        
+        // Toggle all notes checkbox
+        function toggleAllNotes() {
+            const selectAllCheckbox = document.getElementById('noteSelectAll');
+            const noteCheckboxes = document.querySelectorAll('.note-checkbox');
+            
+            noteCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            
+            updateNoteFilter();
+        }
+        
+        // Update note filter when selection changes
+        function updateNoteFilter() {
+            const noteCheckboxes = document.querySelectorAll('.note-checkbox');
+            const selectedNotes = Array.from(noteCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            const selectAllCheckbox = document.getElementById('noteSelectAll');
+            selectAllCheckbox.checked = selectedNotes.length === noteCheckboxes.length;
+            
+            // Update button text
+            const btn = document.getElementById('noteFilterBtn');
+            if (selectedNotes.length === 0 || selectedNotes.length === noteCheckboxes.length) {
+                btn.textContent = '📝 Select Notes';
+            } else if (selectedNotes.length === 1) {
+                const noteName = document.querySelector(`.note-checkbox[value="${selectedNotes[0]}"]`).getAttribute('data-name');
+                btn.textContent = '📝 ' + (noteName.length > 15 ? noteName.substring(0, 15) + '...' : noteName);
+            } else {
+                btn.textContent = '📝 ' + selectedNotes.length + ' Notes';
+            }
+            
+            applyNoteFilter();
+            updateBucketCountSummary();
+            localStorage.setItem('consolidatedViewNoteFilter', JSON.stringify(selectedNotes));
+        }
+        
+        // Apply note filter
+        function applyNoteFilter() {
+            const noteCheckboxes = document.querySelectorAll('.note-checkbox');
+            const selectedNotes = Array.from(noteCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            // If all notes selected or none selected, show all
+            const showAll = selectedNotes.length === 0 || selectedNotes.length === noteCheckboxes.length;
+            
+            // Hide/show note groups based on selection
+            const noteGroups = document.querySelectorAll('.note-group');
+            noteGroups.forEach(group => {
+                const noteId = group.getAttribute('data-note-id');
+                if (showAll || selectedNotes.includes(noteId)) {
+                    group.style.display = 'block';
+                } else {
+                    group.style.display = 'none';
+                }
+            });
+            
+            // Also filter individual subnotes and note-only items by parent note
+            const subNoteItems = document.querySelectorAll('.sub-note-item');
+            subNoteItems.forEach(item => {
+                const noteGroup = item.closest('.note-group');
+                if (noteGroup) {
+                    // Item is in a note group, visibility controlled by note group
+                    return;
+                }
+                
+                // For flat view items, check data attribute
+                const parentNoteId = item.getAttribute('data-parent-note-id');
+                if (parentNoteId && !showAll && !selectedNotes.includes(parentNoteId)) {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // Re-apply other filters
+            applyTrackStatusFilter();
+        }
+        
+        // Update notes dropdown to show only notes that have matching subnotes based on current filters
+        function updateAvailableNotes() {
+            const noteCheckboxes = document.querySelectorAll('.note-checkbox');
+            const filterType = localStorage.getItem('consolidatedViewFilter') || 'all';
+            const selectedStatus = document.querySelector('input[name="trackStatusFilter"]:checked')?.value || 'untracked';
+            const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
+            const selectedBuckets = Array.from(bucketCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            // Helper function to check if a subnote item matches current filters
+            function itemMatchesFilters(item) {
+                // Check track status
+                const isTrackedToday = item.classList.contains('tracked-today');
+                let trackStatusMatches = true;
+                if (selectedStatus === 'tracked') {
+                    trackStatusMatches = isTrackedToday;
+                } else if (selectedStatus === 'untracked') {
+                    trackStatusMatches = !isTrackedToday;
+                }
+                
+                // Check favorites filter
+                const dataValue = item.dataset.parentisfavorite;
+                let parentIsFavorite = false;
+                if (dataValue !== undefined) {
+                    parentIsFavorite = dataValue === 'true' || dataValue === true;
+                } else {
+                    const noteGroupHeader = item.closest('.note-group')?.querySelector('.note-group-header');
+                    if (noteGroupHeader && noteGroupHeader.dataset.isFavorite !== undefined) {
+                        parentIsFavorite = noteGroupHeader.dataset.isFavorite === 'true';
+                    }
+                }
+                let favoriteFilterMatches = filterType === 'all' || (filterType === 'favorite' && parentIsFavorite);
+                
+                // Check bucket filter
+                const itemBucketId = item.closest('fieldset.bucket-fieldset')?.getAttribute('data-bucket-id');
+                let bucketFilterMatches = selectedBuckets.length === 0 || selectedBuckets.length === bucketCheckboxes.length || selectedBuckets.includes(itemBucketId);
+                
+                return trackStatusMatches && favoriteFilterMatches && bucketFilterMatches;
+            }
+            
+            noteCheckboxes.forEach(checkbox => {
+                const noteId = checkbox.value;
+                const labelElement = checkbox.closest('label');
+                if (!labelElement) return;
+                
+                // Find all subnotes belonging to this note (across all bucket sections)
+                let hasVisibleSubNotes = false;
+                
+                // Check grouped view - note groups
+                const noteGroups = document.querySelectorAll(`.note-group[data-note-id="${noteId}"]`);
+                noteGroups.forEach(group => {
+                    const subNoteItems = group.querySelectorAll('.sub-note-item');
+                    subNoteItems.forEach(item => {
+                        if (itemMatchesFilters(item)) {
+                            hasVisibleSubNotes = true;
+                        }
+                    });
+                });
+                
+                // Check flat view - items with data-parent-note-id
+                if (!hasVisibleSubNotes) {
+                    const flatViewItems = document.querySelectorAll(`.sub-note-item[data-parent-note-id="${noteId}"]`);
+                    flatViewItems.forEach(item => {
+                        if (itemMatchesFilters(item)) {
+                            hasVisibleSubNotes = true;
+                        }
+                    });
+                }
+                
+                // Show/hide the note checkbox based on whether it has visible subnotes
+                if (hasVisibleSubNotes) {
+                    labelElement.style.display = 'block';
+                } else {
+                    labelElement.style.display = 'none';
+                    checkbox.checked = false; // Uncheck if hidden
+                }
+            });
+            
+            // Update "All Notes" checkbox state
+            const selectAllCheckbox = document.getElementById('noteSelectAll');
+            const visibleCheckboxes = Array.from(noteCheckboxes).filter(cb => cb.closest('label').style.display !== 'none');
+            const selectedNotes = visibleCheckboxes.filter(cb => cb.checked);
+            selectAllCheckbox.checked = selectedNotes.length === visibleCheckboxes.length && visibleCheckboxes.length > 0;
+            
+            // Update button text
+            const btn = document.getElementById('noteFilterBtn');
+            if (selectedNotes.length === 0 || selectedNotes.length === visibleCheckboxes.length) {
+                btn.textContent = '📝 Select Notes';
+            } else if (selectedNotes.length === 1) {
+                const noteName = selectedNotes[0].getAttribute('data-name');
+                btn.textContent = '📝 ' + (noteName.length > 15 ? noteName.substring(0, 15) + '...' : noteName);
+            } else {
+                btn.textContent = '📝 ' + selectedNotes.length + ' Notes';
+            }
         }
         
         // Initialize filter state on page load
@@ -1589,6 +1885,7 @@
             updateBucketCountSummary();
             const savedFilter = localStorage.getItem('consolidatedViewFilter') || 'all';
             const savedBucketFilter = localStorage.getItem('consolidatedViewBucketFilter');
+            const savedNoteFilter = localStorage.getItem('consolidatedViewNoteFilter');
             const savedTrackStatusFilter = localStorage.getItem('consolidatedViewTrackStatusFilter') || 'untracked';
             
             // Set track status filter
@@ -1596,6 +1893,24 @@
             if (trackStatusRadio) {
                 trackStatusRadio.checked = true;
                 updateTrackStatusFilter();
+            }
+            
+            // Load saved note filter
+            if (savedNoteFilter) {
+                try {
+                    const selectedNotes = JSON.parse(savedNoteFilter);
+                    const noteCheckboxes = document.querySelectorAll('.note-checkbox');
+                    
+                    noteCheckboxes.forEach(checkbox => {
+                        checkbox.checked = selectedNotes.includes(checkbox.value);
+                    });
+                    
+                    updateNoteFilter();
+                } catch (e) {
+                    // If localStorage is corrupted, select all notes
+                    document.getElementById('noteSelectAll').checked = true;
+                    toggleAllNotes();
+                }
             }
             
             if (savedBucketFilter) {

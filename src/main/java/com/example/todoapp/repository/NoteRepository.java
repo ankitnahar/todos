@@ -25,13 +25,13 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
            "ORDER BY n.favorite DESC, n.updatedAt DESC")
     List<Note> searchNotes(@Param("searchText") String searchText);
 
-    @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.deleted = false AND t.id = :tagId ORDER BY n.favorite DESC, n.updatedAt DESC")
+    @Query("SELECT DISTINCT n FROM Note n LEFT JOIN FETCH n.subNotes JOIN n.tags t WHERE n.deleted = false AND t.id = :tagId ORDER BY n.favorite DESC, n.updatedAt DESC")
     List<Note> findByTagId(@Param("tagId") Long tagId);
 
-    @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.deleted = false AND t.id IN :tagIds ORDER BY n.favorite DESC, n.updatedAt DESC")
+    @Query("SELECT DISTINCT n FROM Note n LEFT JOIN FETCH n.subNotes JOIN n.tags t WHERE n.deleted = false AND t.id IN :tagIds ORDER BY n.favorite DESC, n.updatedAt DESC")
     List<Note> findByAnyTagIds(@Param("tagIds") Set<Long> tagIds);
 
-    @Query("SELECT n FROM Note n WHERE n.deleted = false AND " +
+    @Query("SELECT DISTINCT n FROM Note n LEFT JOIN FETCH n.subNotes WHERE n.deleted = false AND " +
            "(SELECT COUNT(DISTINCT t.id) FROM Note n2 JOIN n2.tags t WHERE n2 = n AND t.id IN :tagIds) = :tagCount " +
            "ORDER BY n.favorite DESC, n.updatedAt DESC")
     List<Note> findByAllTagIds(@Param("tagIds") Set<Long> tagIds, @Param("tagCount") long tagCount);

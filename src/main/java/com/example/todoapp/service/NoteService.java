@@ -384,6 +384,7 @@ public class NoteService {
     
     public List<SearchResultDTO> findByTags(Set<Long> tagIds, String tagMatchMode) {
         List<SearchResultDTO> results = new ArrayList<>();
+        Set<String> seenIds = new HashSet<>();
         
         if (tagIds == null || tagIds.isEmpty()) {
             return results;
@@ -394,20 +395,76 @@ public class NoteService {
         
         if (useAndMode && tagIds.size() > 1) {
             // AND mode: find notes/subnotes that have ALL specified tags
+            // For subnotes, we consider combined tags (subnote's own tags + parent's inherited tags)
+            
+            // First, find notes with ALL tags
             List<Note> notesWithAllTags = noteRepository.findByAllTagIds(tagIds, tagIds.size());
             System.out.println("[FIND BY TAGS] Found " + notesWithAllTags.size() + " notes with ALL tags (AND mode)");
             for (Note note : notesWithAllTags) {
                 if (!note.getDeleted()) {
-                    results.add(SearchResultDTO.fromNote(note));
+                    boolean hasSubNotes = note.getSubNotes() != null && !note.getSubNotes().isEmpty();
+                    
+                    // Only include the note itself if it has NO subnotes (not a container)
+                    if (!hasSubNotes) {
+                        String noteKey = "NOTE_" + note.getId();
+                        if (seenIds.add(noteKey)) {
+                            results.add(SearchResultDTO.fromNote(note));
+                        }
+                    } else {
+                        // Include all subnotes of this note (they inherit parent's tags, so they also have ALL tags)
+                        for (SubNote subNote : note.getSubNotes()) {
+                            String subNoteKey = "SUBNOTE_" + subNote.getId();
+                            if (seenIds.add(subNoteKey)) {
+                                results.add(SearchResultDTO.fromSubNote(subNote, note));
+                                System.out.println("[FIND BY TAGS] Including subnote '" + subNote.getHeader() + "' (parent has all tags)");
+                            }
+                        }
+                    }
                 }
             }
             
+            // Also find subnotes that directly have ALL tags
             List<SubNote> subNotesWithAllTags = subNoteRepository.findByAllTagIds(tagIds, tagIds.size());
-            System.out.println("[FIND BY TAGS] Found " + subNotesWithAllTags.size() + " subnotes with ALL tags (AND mode)");
+            System.out.println("[FIND BY TAGS] Found " + subNotesWithAllTags.size() + " subnotes with ALL tags directly (AND mode)");
             for (SubNote subNote : subNotesWithAllTags) {
                 Note parentNote = subNote.getNote();
                 if (parentNote != null && !parentNote.getDeleted()) {
-                    results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+                    String subNoteKey = "SUBNOTE_" + subNote.getId();
+                    if (seenIds.add(subNoteKey)) {
+                        results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+                    }
+                }
+            }
+            
+            // NEW: Find subnotes where COMBINED tags (own + inherited from parent) satisfy ALL search tags
+            // This handles the case where subnote has "Bug" and parent has "26.Q1" - together they match "Bug AND 26.Q1"
+            List<SubNote> allSubNotes = subNoteRepository.findAll();
+            System.out.println("[FIND BY TAGS] Checking " + allSubNotes.size() + " subnotes for combined tag match");
+            for (SubNote subNote : allSubNotes) {
+                Note parentNote = subNote.getNote();
+                if (parentNote != null && !parentNote.getDeleted()) {
+                    String subNoteKey = "SUBNOTE_" + subNote.getId();
+                    if (!seenIds.contains(subNoteKey)) {
+                        // Compute combined tags: subnote's own tags + parent's tags
+                        Set<Long> combinedTagIds = new HashSet<>();
+                        if (subNote.getTags() != null) {
+                            for (var tag : subNote.getTags()) {
+                                combinedTagIds.add(tag.getId());
+                            }
+                        }
+                        if (parentNote.getTags() != null) {
+                            for (var tag : parentNote.getTags()) {
+                                combinedTagIds.add(tag.getId());
+                            }
+                        }
+                        
+                        // Check if combined tags contain ALL search tags
+                        if (combinedTagIds.containsAll(tagIds)) {
+                            seenIds.add(subNoteKey);
+                            results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+                            System.out.println("[FIND BY TAGS] Including subnote '" + subNote.getHeader() + "' (combined tags match all search tags)");
+                        }
+                    }
                 }
             }
         } else {
@@ -417,34 +474,41 @@ public class NoteService {
                 System.out.println("[FIND BY TAGS] Found " + notesWithTag.size() + " notes with tag ID " + tagId);
                 for (Note note : notesWithTag) {
                     if (!note.getDeleted()) {
-                        results.add(SearchResultDTO.fromNote(note));
+                        boolean hasSubNotes = note.getSubNotes() != null && !note.getSubNotes().isEmpty();
+                        
+                        // Only include the note itself if it has NO subnotes (not a container)
+                        if (!hasSubNotes) {
+                            String noteKey = "NOTE_" + note.getId();
+                            if (seenIds.add(noteKey)) {
+                                results.add(SearchResultDTO.fromNote(note));
+                            }
+                        } else {
+                            // Include all subnotes of this note (they inherit parent's tags)
+                            for (SubNote subNote : note.getSubNotes()) {
+                                String subNoteKey = "SUBNOTE_" + subNote.getId();
+                                if (seenIds.add(subNoteKey)) {
+                                    results.add(SearchResultDTO.fromSubNote(subNote, note));
+                                    System.out.println("[FIND BY TAGS] Including subnote '" + subNote.getHeader() + "' (inherits parent tag " + tagId + ")");
+                                }
+                            }
+                        }
                     }
                 }
                 
-                // Find subnotes with these tags
+                // Also find subnotes that directly have this tag
                 List<SubNote> subNotesWithTag = subNoteRepository.findByTagId(tagId);
-                System.out.println("[FIND BY TAGS] Found " + subNotesWithTag.size() + " subnotes with tag ID " + tagId);
+                System.out.println("[FIND BY TAGS] Found " + subNotesWithTag.size() + " subnotes with tag ID " + tagId + " directly");
                 for (SubNote subNote : subNotesWithTag) {
                     Note parentNote = subNote.getNote();
                     if (parentNote != null && !parentNote.getDeleted()) {
-                        results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+                        String subNoteKey = "SUBNOTE_" + subNote.getId();
+                        if (seenIds.add(subNoteKey)) {
+                            results.add(SearchResultDTO.fromSubNote(subNote, parentNote));
+                        }
                     }
                 }
             }
         }
-        
-        // Remove duplicates (in case a note/subnote has multiple selected tags)
-        Set<String> seenIds = new HashSet<>();
-        results = results.stream()
-            .filter(r -> {
-                String key = r.getType() + "_" + r.getId();
-                if (seenIds.contains(key)) {
-                    return false;
-                }
-                seenIds.add(key);
-                return true;
-            })
-            .collect(Collectors.toList());
         
         // Sort results: favorites first, then by updated date
         results.sort((r1, r2) -> {
@@ -475,11 +539,22 @@ public class NoteService {
         
         System.out.println("[FIND BY BUCKET] Searching for bucket ID: " + bucketId);
         
-        // Find notes with this bucket
+        // Find notes with this bucket - but only include if they have NO subnotes
+        // For nested notes, the bucket on parent is meaningless - only subnote buckets matter
         List<Note> notesWithBucket = noteRepository.findByBucketId(bucketId);
         System.out.println("[FIND BY BUCKET] Found " + notesWithBucket.size() + " notes with bucket ID " + bucketId);
         for (Note note : notesWithBucket) {
-            results.add(SearchResultDTO.fromNote(note));
+            // Load subnotes to check if this is a nested note
+            Note noteWithSubNotes = noteRepository.findByIdWithSubNotes(note.getId());
+            boolean hasSubNotes = noteWithSubNotes != null && noteWithSubNotes.getSubNotes() != null && !noteWithSubNotes.getSubNotes().isEmpty();
+            
+            // Only include the note if it has NO subnotes (not a container)
+            if (!hasSubNotes) {
+                results.add(SearchResultDTO.fromNote(note));
+                System.out.println("[FIND BY BUCKET] Including note '" + note.getName() + "' (no subnotes)");
+            } else {
+                System.out.println("[FIND BY BUCKET] Skipping nested note '" + note.getName() + "' - bucket on parent is meaningless");
+            }
         }
         
         // Find subnotes with this bucket

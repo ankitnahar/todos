@@ -1900,6 +1900,45 @@
             });
         }
         
+        // Scroll to and focus on a specific subnote when navigating from search results
+        function scrollToTargetSubNote() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetSubNoteId = urlParams.get('subNoteId');
+            
+            if (!targetSubNoteId) return;
+            
+            console.log('[scrollToTargetSubNote] Looking for subnote ID:', targetSubNoteId);
+            
+            // Find the subnote element by its hidden input value
+            const hiddenInputs = document.querySelectorAll('input[name="subNoteIds"]');
+            for (const input of hiddenInputs) {
+                if (input.value === targetSubNoteId) {
+                    const subNoteItem = input.closest('.sub-note-item');
+                    if (subNoteItem) {
+                        console.log('[scrollToTargetSubNote] Found subnote element:', subNoteItem.id);
+                        
+                        // Scroll to the subnote with some offset from top
+                        subNoteItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // Focus on the header textarea after scrolling completes
+                        setTimeout(() => {
+                            const headerTextarea = subNoteItem.querySelector('textarea[name="subNoteHeaders"]');
+                            if (headerTextarea) {
+                                headerTextarea.focus();
+                                // Add a brief highlight effect
+                                subNoteItem.style.transition = 'box-shadow 0.3s ease';
+                                subNoteItem.style.boxShadow = '0 0 10px 3px rgba(0, 123, 255, 0.5)';
+                                setTimeout(() => {
+                                    subNoteItem.style.boxShadow = '';
+                                }, 2000);
+                            }
+                        }, 500);
+                    }
+                    break;
+                }
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             const textarea = document.getElementById('details');
             nameInput = document.getElementById('name'); // Assign to global
@@ -1978,6 +2017,9 @@
                     });
                     // Initialize auto-expand for all textareas
                     setTimeout(initializeAllTextareaAutoExpand, 100);
+                    
+                    // Check if we need to scroll to a specific subnote (from search results)
+                    setTimeout(scrollToTargetSubNote, 200);
                 } else if (subNoteCount === 0) {
                     // If nested is enabled but no sub-notes exist, add first one
                     const currentDetails = quill.root.innerHTML;
