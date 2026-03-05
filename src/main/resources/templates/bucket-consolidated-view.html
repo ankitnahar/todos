@@ -472,12 +472,28 @@
         <!-- Filter Toggle Buttons -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
             <div style="display: flex; gap: 0.5rem; align-items: flex-start; flex-wrap: wrap;">
-                <button id="filterAllBtn" class="btn btn-outline-primary" onclick="filterNotes('all')" title="Show all notes" style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
-                    📋 All Notes
-                </button>
-                <button id="filterFavoriteBtn" class="btn btn-outline-primary" onclick="filterNotes('favorite')" title="Show only favorite notes" style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
-                    ⭐ Favorites Only
-                </button>
+                <!-- Note Type Filter Dropdown -->
+                <div class="dropdown" style="position: relative; margin-right: 0.5rem;">
+                    <button class="btn btn-outline-primary dropdown-toggle" 
+                            id="noteTypeFilterBtn"
+                            type="button" 
+                            onclick="toggleNoteTypeDropdown()" 
+                            style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px; border: 1.5px solid #667eea; color: #667eea; font-weight: 500;">
+                        ⭐ Favorites Only
+                    </button>
+                    <div id="noteTypeFilterDropdown" 
+                         class="dropdown-menu" 
+                         style="display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #dee2e6; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 180px; padding: 0.5rem;">
+                        <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                            <input type="radio" name="noteTypeFilter" value="favorite" onchange="filterNotes('favorite')" style="margin-right: 0.5rem;" checked>
+                            ⭐ Favorites Only
+                        </label>
+                        <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                            <input type="radio" name="noteTypeFilter" value="all" onchange="filterNotes('all')" style="margin-right: 0.5rem;">
+                            📋 All Notes
+                        </label>
+                    </div>
+                </div>
                 
                 <!-- Track Status Filter Multi-Select Dropdown -->
                 <div class="dropdown" style="position: relative;">
@@ -602,7 +618,7 @@
                                      th:data-parentisfavorite="${subNote.note != null && subNote.note.favorite}"
                                      th:data-subnote-id="${subNote.id}"
                                      th:data-parent-note-id="${noteEntry.key}"
-                                     th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">>
+                                     th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">
                                     <div class="sub-note-header"
                                          th:onclick="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null} ? 'toggleDescription(' + ${subNote.id} + ')' : ''">
                                         <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
@@ -1385,33 +1401,43 @@
         }
         
         function filterNotes(filterType) {
-            const filterAllBtn = document.getElementById('filterAllBtn');
-            const filterFavoriteBtn = document.getElementById('filterFavoriteBtn');
-            
-            // Update button states
-            if (filterType === 'all') {
-                filterAllBtn.classList.add('active');
-                filterFavoriteBtn.classList.remove('active');
-                filterAllBtn.style.backgroundColor = '#667eea';
-                filterAllBtn.style.color = 'white';
-                filterFavoriteBtn.style.backgroundColor = 'transparent';
-                filterFavoriteBtn.style.color = '#667eea';
-            } else {
-                filterFavoriteBtn.classList.add('active');
-                filterAllBtn.classList.remove('active');
-                filterFavoriteBtn.style.backgroundColor = '#667eea';
-                filterFavoriteBtn.style.color = 'white';
-                filterAllBtn.style.backgroundColor = 'transparent';
-                filterAllBtn.style.color = '#667eea';
-            }
-            
-            // Store preference in localStorage FIRST (before filters read it)
+            // Store preference in localStorage
             localStorage.setItem('consolidatedViewFilter', filterType);
+            // Clear note filter so all applicable notes are selected after reload
+            localStorage.removeItem('consolidatedViewNoteFilter');
+            window.location.reload();
+        }
+        
+        // Toggle note type filter dropdown
+        function toggleNoteTypeDropdown() {
+            const dropdown = document.getElementById('noteTypeFilterDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
             
-            // Re-apply all filters
-            applyTrackStatusFilter();
+            // Close when clicking outside
+            document.addEventListener('click', function closeNoteTypeDropdown(event) {
+                const btn = document.getElementById('noteTypeFilterBtn');
+                const menu = document.getElementById('noteTypeFilterDropdown');
+                if (!btn.contains(event.target) && !menu.contains(event.target)) {
+                    menu.style.display = 'none';
+                    document.removeEventListener('click', closeNoteTypeDropdown);
+                }
+            });
+        }
+
+        // Centralized function to update both bucket count summary and legend counts
+        function updateCountsAndLegends() {
             updateBucketCountSummary();
-            updateAvailableNotes();
+            // Update legend counts for each bucket
+            document.querySelectorAll('fieldset.bucket-fieldset').forEach(section => {
+                // Only count items that are visible (display: block)
+                const visibleItems = Array.from(section.querySelectorAll('.sub-note-item')).filter(item => item.style.display !== 'none');
+                const legend = section.querySelector('legend');
+                if (legend) {
+                    const legendText = legend.textContent;
+                    const bucketName = legendText.substring(0, legendText.lastIndexOf('('));
+                    legend.textContent = bucketName.trim() + ' (' + visibleItems.length + ')';
+                }
+            });
         }
         
         // Toggle track status filter dropdown
@@ -1446,6 +1472,8 @@
             applyTrackStatusFilter();
             updateBucketCountSummary(); // Call after filter to ensure counts are updated
             updateAvailableNotes(); // Update notes dropdown based on current filters
+            applyNoteFilter(); // Re-apply note filter with updated note selection
+            setTimeout(updateCountsAndLegends, 50);
             localStorage.setItem('consolidatedViewTrackStatusFilter', selectedStatus);
         }
         
@@ -1479,7 +1507,7 @@
                 }
                 
                 // Check favorites filter
-                const filterType = localStorage.getItem('consolidatedViewFilter') || 'all';
+                const filterType = localStorage.getItem('consolidatedViewFilter') || 'favorite';
                 const parentIsFavorite = getParentIsFavorite(item);
                 let favoriteFilterMatches = filterType === 'all' || (filterType === 'favorite' && parentIsFavorite);
                 
@@ -1577,6 +1605,8 @@
             applyBucketFilter();
             updateBucketCountSummary(); // Call after applyBucketFilter to ensure visibility is updated
             updateAvailableNotes(); // Update notes dropdown based on current filters
+            applyNoteFilter(); // Re-apply note filter with updated note selection
+            setTimeout(updateCountsAndLegends, 50);
             localStorage.setItem('consolidatedViewBucketFilter', JSON.stringify(selectedBuckets));
         }
         
@@ -1621,7 +1651,7 @@
                 }
                 
                 // Check favorites filter
-                const filterType = localStorage.getItem('consolidatedViewFilter') || 'all';
+                const filterType = localStorage.getItem('consolidatedViewFilter') || 'favorite';
                 const parentIsFavorite = getParentIsFavorite(item);
                 let favoriteFilterMatches = filterType === 'all' || (filterType === 'favorite' && parentIsFavorite);
                 
@@ -1781,12 +1811,13 @@
             
             // Re-apply other filters
             applyTrackStatusFilter();
+            setTimeout(updateCountsAndLegends, 50);
         }
         
         // Update notes dropdown to show only notes that have matching subnotes based on current filters
         function updateAvailableNotes() {
             const noteCheckboxes = document.querySelectorAll('.note-checkbox');
-            const filterType = localStorage.getItem('consolidatedViewFilter') || 'all';
+            const filterType = localStorage.getItem('consolidatedViewFilter') || 'favorite';
             const selectedStatus = document.querySelector('input[name="trackStatusFilter"]:checked')?.value || 'untracked';
             const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
             const selectedBuckets = Array.from(bucketCheckboxes)
@@ -1856,6 +1887,7 @@
                 // Show/hide the note checkbox based on whether it has visible subnotes
                 if (hasVisibleSubNotes) {
                     labelElement.style.display = 'block';
+                    checkbox.checked = true; // Select all visible notes by default
                 } else {
                     labelElement.style.display = 'none';
                     checkbox.checked = false; // Uncheck if hidden
@@ -1883,59 +1915,70 @@
         // Initialize filter state on page load
         document.addEventListener('DOMContentLoaded', function() {
             updateBucketCountSummary();
-            const savedFilter = localStorage.getItem('consolidatedViewFilter') || 'all';
-            const savedBucketFilter = localStorage.getItem('consolidatedViewBucketFilter');
-            const savedNoteFilter = localStorage.getItem('consolidatedViewNoteFilter');
-            const savedTrackStatusFilter = localStorage.getItem('consolidatedViewTrackStatusFilter') || 'untracked';
+            const savedFilter = localStorage.getItem('consolidatedViewFilter') || 'favorite';
             
-            // Set track status filter
-            const trackStatusRadio = document.querySelector(`input[name="trackStatusFilter"][value="${savedTrackStatusFilter}"]`);
+            // Clear filters to always use defaults
+            localStorage.removeItem('consolidatedViewBucketFilter');
+            localStorage.removeItem('consolidatedViewTrackStatusFilter');
+            localStorage.removeItem('consolidatedViewNoteFilter');
+            
+            // Set track status filter to "Untracked Only" by default
+            const trackStatusRadio = document.querySelector(`input[name="trackStatusFilter"][value="untracked"]`);
             if (trackStatusRadio) {
                 trackStatusRadio.checked = true;
                 updateTrackStatusFilter();
             }
             
-            // Load saved note filter
-            if (savedNoteFilter) {
-                try {
-                    const selectedNotes = JSON.parse(savedNoteFilter);
-                    const noteCheckboxes = document.querySelectorAll('.note-checkbox');
-                    
-                    noteCheckboxes.forEach(checkbox => {
-                        checkbox.checked = selectedNotes.includes(checkbox.value);
-                    });
-                    
-                    updateNoteFilter();
-                } catch (e) {
-                    // If localStorage is corrupted, select all notes
-                    document.getElementById('noteSelectAll').checked = true;
-                    toggleAllNotes();
-                }
-            }
+            // Select all notes by default
+            document.getElementById('noteSelectAll').checked = true;
+            toggleAllNotes();
             
-            if (savedBucketFilter) {
-                try {
-                    const selectedBuckets = JSON.parse(savedBucketFilter);
-                    const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
-                    
-                    bucketCheckboxes.forEach(checkbox => {
-                        checkbox.checked = selectedBuckets.includes(checkbox.value);
-                    });
-                    
-                    updateBucketFilter();
-                } catch (e) {
-                    // If localStorage is corrupted, select all buckets
-                    document.getElementById('bucketSelectAll').checked = true;
-                    toggleAllBuckets();
-                }
-            } else {
-                // Default: select all buckets
-                document.getElementById('bucketSelectAll').checked = true;
-                toggleAllBuckets();
-            }
+            // Always select default buckets: Todo, Follow up, Blocked, In Progress
+            selectDefaultBuckets();
             
-            filterNotes(savedFilter);
+            // Initialize note type filter UI (without triggering reload)
+            initNoteTypeFilter(savedFilter);
         });
+        
+        // Select default buckets: Todo, Follow up, Blocked, In Progress
+        function selectDefaultBuckets() {
+            const defaultBucketNames = ['Todo', 'Follow up', 'Blocked', 'In Progress'];
+            const bucketCheckboxes = document.querySelectorAll('.bucket-checkbox');
+            
+            bucketCheckboxes.forEach(checkbox => {
+                const bucketName = checkbox.getAttribute('data-name');
+                // Check if bucket name contains any of the default names (case-insensitive, partial match)
+                checkbox.checked = defaultBucketNames.some(name => 
+                    bucketName && bucketName.toLowerCase().includes(name.toLowerCase())
+                );
+                console.log('Bucket:', bucketName, 'Checked:', checkbox.checked);
+            });
+            
+            // Update the "Select All" checkbox state
+            const allChecked = Array.from(bucketCheckboxes).every(cb => cb.checked);
+            document.getElementById('bucketSelectAll').checked = allChecked;
+            
+            updateBucketFilter();
+        }
+        
+        // Initialize note type filter dropdown UI on page load
+        function initNoteTypeFilter(filterType) {
+            const btn = document.getElementById('noteTypeFilterBtn');
+            const radio = document.querySelector(`input[name="noteTypeFilter"][value="${filterType}"]`);
+            
+            // Update button text
+            if (filterType === 'all') {
+                btn.textContent = '📋 All Notes';
+            } else {
+                btn.textContent = '⭐ Favorites Only';
+            }
+            if (radio) radio.checked = true;
+            
+            // Apply all filters
+            applyTrackStatusFilter();
+            updateAvailableNotes();
+            setTimeout(updateCountsAndLegends, 50);
+        }
         
         // ESC key navigation
         document.addEventListener('keydown', function(event) {
