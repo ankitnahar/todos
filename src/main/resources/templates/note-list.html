@@ -508,8 +508,19 @@
         
         .note-tags-and-assignees {
             display: flex;
-            flex-direction: column;
-            gap: 0.15rem;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-top: 0.25rem;
+        }
+        
+        .note-assignees {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-left: auto;
+            justify-content: flex-end;
+            align-items: center;
         }
         
         .note-right {
@@ -965,7 +976,7 @@
                         <div class="note-tags" th:if="${not #lists.isEmpty(result.tags)}">
                             <span th:each="tag : ${result.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
                         </div>
-                        <div class="note-assignees" th:if="${not #lists.isEmpty(result.teamMembers)}" style="display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center;">
+                        <div class="note-assignees" th:if="${not #lists.isEmpty(result.teamMembers)}">
                             <span th:each="tm : ${result.teamMembers}" class="assignee-badge" th:text="${tm.name}">Assignee</span>
                         </div>
                     </div>
@@ -1102,7 +1113,7 @@
                         <div class="note-tags" th:if="${not #lists.isEmpty(note.tags)}">
                             <span th:each="tag : ${note.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
                         </div>
-                        <div class="note-assignees" th:if="${not #lists.isEmpty(note.teamMembers)}" style="display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center;">
+                        <div class="note-assignees" th:if="${not #lists.isEmpty(note.teamMembers)}">
                             <span th:each="tm : ${note.teamMembers}" class="assignee-badge" th:text="${tm.name}">Assignee</span>
                         </div>
                     </div>
