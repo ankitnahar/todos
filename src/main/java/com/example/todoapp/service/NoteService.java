@@ -43,6 +43,10 @@ public class NoteService {
         return noteRepository.findByIdWithSubNotes(id);
     }
 
+    public Optional<SubNote> getSubNoteById(Long id) {
+        return subNoteRepository.findById(id);
+    }
+
     public Note save(Note note) {
         return noteRepository.save(note);
     }

@@ -45,7 +45,11 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
     @Query("SELECT n FROM Note n WHERE n.deleted = true ORDER BY n.deletedAt DESC")
     List<Note> findAllDeleted();
 
-    @Query("SELECT n FROM Note n LEFT JOIN FETCH n.subNotes WHERE n.id = :id")
+    @Query("SELECT DISTINCT n FROM Note n " +
+            "LEFT JOIN FETCH n.subNotes s " +
+            "LEFT JOIN FETCH s.tags " +
+            "LEFT JOIN FETCH s.teamMembers " +
+            "WHERE n.id = :id")
     Note findByIdWithSubNotes(@Param("id") Long id);
 
     @Query("SELECT DISTINCT n FROM Note n LEFT JOIN FETCH n.subNotes JOIN n.teamMembers tm WHERE n.deleted = false AND tm.id IN :teamMemberIds ORDER BY n.favorite DESC, n.updatedAt DESC")

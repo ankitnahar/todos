@@ -1654,19 +1654,41 @@
             }
             
             // Store existing tags for this subnote
-            if (existingData && existingData.tagIds && existingData.tagIds.length > 0) {
+            if (existingData && existingData.tagIds && Array.isArray(existingData.tagIds) && existingData.tagIds.length > 0) {
                 if (!window.subNoteTagsData) window.subNoteTagsData = {};
                 const indexStr = String(index);
-                window.subNoteTagsData[indexStr] = existingData.tagIds;
-                updateSubNoteTagDisplay(index);
+                // Store as numbers to ensure consistency, filter out invalid values
+                try {
+                    window.subNoteTagsData[indexStr] = existingData.tagIds
+                        .map(id => {
+                            const num = Number(id);
+                            return !isNaN(num) ? num : null;
+                        })
+                        .filter(id => id !== null);
+                    console.log(`Loaded tags for subnote ${index}:`, window.subNoteTagsData[indexStr]);
+                    updateSubNoteTagDisplay(index);
+                } catch(e) {
+                    console.error(`Error loading tags for subnote ${index}:`, e);
+                }
             }
             
             // Store existing team members for this subnote
-            if (existingData && existingData.teamMemberIds && existingData.teamMemberIds.length > 0) {
+            if (existingData && existingData.teamMemberIds && Array.isArray(existingData.teamMemberIds) && existingData.teamMemberIds.length > 0) {
                 if (!window.subNoteTeamMembersData) window.subNoteTeamMembersData = {};
                 const indexStr = String(index);
-                window.subNoteTeamMembersData[indexStr] = existingData.teamMemberIds;
-                updateSubNoteTeamMembersDisplay(index);
+                // Store as numbers to ensure consistency, filter out invalid values
+                try {
+                    window.subNoteTeamMembersData[indexStr] = existingData.teamMemberIds
+                        .map(id => {
+                            const num = Number(id);
+                            return !isNaN(num) ? num : null;
+                        })
+                        .filter(id => id !== null);
+                    console.log(`Loaded team members for subnote ${index}:`, window.subNoteTeamMembersData[indexStr]);
+                    updateSubNoteTeamMembersDisplay(index);
+                } catch(e) {
+                    console.error(`Error loading team members for subnote ${index}:`, e);
+                }
             }
             
             updateEmptyBuckets();
@@ -1692,7 +1714,9 @@
             tagList.innerHTML = '';
             
             allTags.forEach(tag => {
-                const isChecked = currentSelectedTags.includes(tag.id);
+                // Ensure both tag.id and currentSelectedTags values are numbers for comparison
+                const tagId = Number(tag.id);
+                const isChecked = currentSelectedTags.some(selectedId => Number(selectedId) === tagId);
                 const tagItemHtml = `
                     <div class="subnote-tag-item ${isChecked ? 'selected' : ''}" data-tag-name="${tag.name}" onclick="toggleSubNoteTag(${tag.id})">
                         <input class="form-check-input subnote-tag-checkbox" type="checkbox" 
@@ -1778,11 +1802,19 @@
             if (currentSubNoteIndex === null) return;
             
             const checkedBoxes = document.querySelectorAll('.subnote-tag-checkbox:checked');
-            const selectedTagIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+            const selectedTagIds = Array.from(checkedBoxes).map(cb => {
+                try {
+                    return Number(cb.value);
+                } catch(e) {
+                    console.error('Error parsing tag ID:', cb.value);
+                    return null;
+                }
+            }).filter(id => id !== null && !isNaN(id));
             
             // Store selected tags
             if (!window.subNoteTagsData) window.subNoteTagsData = {};
             window.subNoteTagsData[currentSubNoteIndex] = selectedTagIds;
+            console.log(`Applied ${selectedTagIds.length} tags to subnote ${currentSubNoteIndex}:`, selectedTagIds);
             
             // Update tag display for the subnote
             updateSubNoteTagDisplay(currentSubNoteIndex);
@@ -1850,7 +1882,9 @@
             teamMemberList.innerHTML = '';
             
             allTeamMembers.forEach(tm => {
-                const isChecked = currentSelectedTeamMembers.includes(tm.id);
+                // Ensure both tm.id and currentSelectedTeamMembers values are numbers for comparison
+                const tmId = Number(tm.id);
+                const isChecked = currentSelectedTeamMembers.some(selectedId => Number(selectedId) === tmId);
                 const tmItemHtml = `
                     <div class="subnote-team-member-item ${isChecked ? 'selected' : ''}" data-team-member-name="${tm.name}" onclick="toggleSubNoteTeamMember(${tm.id})">
                         <input class="form-check-input subnote-team-member-checkbox" type="checkbox" 
@@ -1926,11 +1960,19 @@
             if (currentSubNoteIndexForTeamMembers === null) return;
             
             const checkedBoxes = document.querySelectorAll('.subnote-team-member-checkbox:checked');
-            const selectedTeamMemberIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+            const selectedTeamMemberIds = Array.from(checkedBoxes).map(cb => {
+                try {
+                    return Number(cb.value);
+                } catch(e) {
+                    console.error('Error parsing team member ID:', cb.value);
+                    return null;
+                }
+            }).filter(id => id !== null && !isNaN(id));
             
             // Store selected team members
             if (!window.subNoteTeamMembersData) window.subNoteTeamMembersData = {};
             window.subNoteTeamMembersData[currentSubNoteIndexForTeamMembers] = selectedTeamMemberIds;
+            console.log(`Applied ${selectedTeamMemberIds.length} team members to subnote ${currentSubNoteIndexForTeamMembers}:`, selectedTeamMemberIds);
             
             // Update team members display for the subnote
             updateSubNoteTeamMembersDisplay(currentSubNoteIndexForTeamMembers);
@@ -2513,29 +2555,73 @@
                     el.remove();
                 });
                 
-                // Collect selected tags from subNoteTagsData for all subnotes
+                // Initialize the data objects if they don't exist
+                if (!window.subNoteTagsData) window.subNoteTagsData = {};
+                if (!window.subNoteTeamMembersData) window.subNoteTeamMembersData = {};
+                
+                // Collect tags and team members for each visible subnote
                 document.querySelectorAll('.sub-note-item').forEach((subNote, position) => {
                     const index = subNote.getAttribute('data-index');
-                    console.log(`Submitting subnote at position ${position}, with data-index ${index}`);
+                    const indexStr = String(index);
+                    console.log(`Processing subnote at position ${position}, with data-index ${index}`);
                     
-                    const selectedTagIds = (window.subNoteTagsData && window.subNoteTagsData[index]) ? window.subNoteTagsData[index] : [];
-                    console.log(`Subnote ${index} tags:`, selectedTagIds);
-                    
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = 'subNoteTagIds';
-                    hiddenInput.value = selectedTagIds.join(',');
-                    form.appendChild(hiddenInput);
-                    
-                    // Collect selected team members from subNoteTeamMembersData for all subnotes
-                    const selectedTeamMemberIds = (window.subNoteTeamMembersData && window.subNoteTeamMembersData[index]) ? window.subNoteTeamMembersData[index] : [];
-                    console.log(`Subnote ${index} team members:`, selectedTeamMemberIds);
-                    
-                    const hiddenTeamMemberInput = document.createElement('input');
-                    hiddenTeamMemberInput.type = 'hidden';
-                    hiddenTeamMemberInput.name = 'subNoteTeamMemberIds';
-                    hiddenTeamMemberInput.value = selectedTeamMemberIds.join(',');
-                    form.appendChild(hiddenTeamMemberInput);
+                    try {
+                        // Get selected tags - safely handle and validate
+                        let selectedTagIds = [];
+                        if (window.subNoteTagsData && window.subNoteTagsData[indexStr] && Array.isArray(window.subNoteTagsData[indexStr])) {
+                            selectedTagIds = window.subNoteTagsData[indexStr]
+                                .map(id => {
+                                    const num = Number(id);
+                                    return !isNaN(num) ? String(num) : null;
+                                })
+                                .filter(id => id !== null);
+                        }
+                        console.log(`Subnote ${index} tags:`, selectedTagIds);
+                        
+                        // Create hidden input for tags
+                        if (selectedTagIds.length > 0 || true) {  // Create input even if empty to maintain alignment
+                            const hiddenInput = document.createElement('input');
+                            hiddenInput.type = 'hidden';
+                            hiddenInput.name = 'subNoteTagIds';
+                            hiddenInput.value = selectedTagIds.join('|');  // Use | as delimiter instead of comma
+                            form.appendChild(hiddenInput);
+                        }
+                        
+                        // Get selected team members - safely handle and validate
+                        let selectedTeamMemberIds = [];
+                        if (window.subNoteTeamMembersData && window.subNoteTeamMembersData[indexStr] && Array.isArray(window.subNoteTeamMembersData[indexStr])) {
+                            selectedTeamMemberIds = window.subNoteTeamMembersData[indexStr]
+                                .map(id => {
+                                    const num = Number(id);
+                                    return !isNaN(num) ? String(num) : null;
+                                })
+                                .filter(id => id !== null);
+                        }
+                        console.log(`Subnote ${index} team members:`, selectedTeamMemberIds);
+                        
+                        // Create hidden input for team members
+                        if (selectedTeamMemberIds.length > 0 || true) {  // Create input even if empty to maintain alignment
+                            const hiddenTeamMemberInput = document.createElement('input');
+                            hiddenTeamMemberInput.type = 'hidden';
+                            hiddenTeamMemberInput.name = 'subNoteTeamMemberIds';
+                            hiddenTeamMemberInput.value = selectedTeamMemberIds.join('|');  // Use | as delimiter instead of comma
+                            form.appendChild(hiddenTeamMemberInput);
+                        }
+                    } catch(e) {
+                        console.error(`Error processing subnote ${index}:`, e);
+                        // Create empty inputs to maintain alignment even if there's an error
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'subNoteTagIds';
+                        hiddenInput.value = '';
+                        form.appendChild(hiddenInput);
+                        
+                        const hiddenTeamMemberInput = document.createElement('input');
+                        hiddenTeamMemberInput.type = 'hidden';
+                        hiddenTeamMemberInput.name = 'subNoteTeamMemberIds';
+                        hiddenTeamMemberInput.value = '';
+                        form.appendChild(hiddenTeamMemberInput);
+                    }
                 });
                 
                 hasUnsavedChanges = false;
