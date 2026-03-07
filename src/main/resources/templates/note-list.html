@@ -488,6 +488,28 @@
             border: 1px solid #bbdefb;
             letter-spacing: 0.3px;
             white-space: nowrap;
+            line-height: 1.2;
+            display: inline-block;
+        }
+        
+        .assignee-badge {
+            background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+            color: #1b5e20;
+            padding: 0.15rem 0.45rem;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            border: 1px solid #81c784;
+            line-height: 1.2;
+            display: inline-block;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        
+        .note-tags-and-assignees {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
         }
         
         .note-right {
@@ -806,6 +828,7 @@
                     <!-- Main Navigation -->
                     <a th:href="@{/tasks(quickFilter=${lastQuickFilter})}" class="btn-header btn-header-light">✓ Tasks</a>
                     <a href="/tags" class="btn-header btn-header-light">🏷️ Tags</a>
+                    <a href="/team-members" class="btn-header btn-header-light">👥 Team Members</a>
                     <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
                     
                     <div class="btn-group-separator"></div>
@@ -832,7 +855,7 @@
 
         <!-- Filter Card -->
         <div class="filter-card">
-            <form method="get" class="filter-row">
+            <form method="get" class="filter-row" id="filterForm">
                 <div class="filter-col filter-col-tags">
                     <div class="tag-label-row">
                         <label for="tags">Tags</label>
@@ -862,6 +885,15 @@
                                 th:value="${bucket.id}"
                                 th:text="${bucket.name}"
                                 th:selected="${selectedBucketIds.contains(bucket.id)}"></option>
+                    </select>
+                </div>
+                <div class="filter-col filter-col-buckets">
+                    <label for="teamMembers">Assignee</label>
+                    <select id="teamMembers" name="teamMemberIds" class="form-select" multiple>
+                        <option th:each="tm : ${allTeamMembers}"
+                                th:value="${tm.id}"
+                                th:text="${tm.name}"
+                                th:selected="${selectedTeamMemberIds.contains(tm.id)}"></option>
                     </select>
                 </div>
                 <div class="filter-col filter-col-track">
@@ -929,8 +961,13 @@
                             <span style="opacity: 0.7;">From:</span> <a th:href="@{/notes/{id}(id=${result.parentNoteId})}" th:text="${result.parentNoteName}" style="color: #667eea; text-decoration: none;">Parent Note</a>
                         </div>
                     </div>
-                    <div class="note-tags" th:if="${not #lists.isEmpty(result.tags)}">
-                        <span th:each="tag : ${result.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
+                    <div class="note-tags-and-assignees">
+                        <div class="note-tags" th:if="${not #lists.isEmpty(result.tags)}">
+                            <span th:each="tag : ${result.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
+                        </div>
+                        <div class="note-assignees" th:if="${not #lists.isEmpty(result.teamMembers)}" style="display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center;">
+                            <span th:each="tm : ${result.teamMembers}" class="assignee-badge" th:text="${tm.name}">Assignee</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -940,7 +977,7 @@
                         <!-- NOTE actions - full set of buttons -->
                         <button th:if="${result.type == 'NOTE'}" 
                                 class="action-btn track-btn" 
-                                th:attr="data-note-id=${result.id}"
+                                th:attr="data-note-id=${result.id},data-item-type='NOTE'"
                                 th:class="${'action-btn track-btn ' + (result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
                                 onclick="toggleTrackNote(this, event)"
                                 title="Track for Today"
@@ -990,7 +1027,7 @@
                         <!-- SUBNOTE actions - view and edit parent note only -->
                         <button th:if="${result.type == 'SUBNOTE'}" 
                                 class="action-btn track-btn" 
-                                th:attr="data-note-id=${result.id}"
+                                th:attr="data-note-id=${result.id},data-item-type='SUBNOTE'"
                                 th:class="${'action-btn track-btn ' + (result.lastTrackedDate != null && #temporals.format(result.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
                                 onclick="toggleTrackNote(this, event)"
                                 title="Track for Today"
@@ -1061,8 +1098,13 @@
                         <span class="star-icon"></span>
                     </button>
                     <h3 class="note-title" th:text="${note.name}">Note Title</h3>
-                    <div class="note-tags" th:if="${not #lists.isEmpty(note.tags)}">
-                        <span th:each="tag : ${note.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
+                    <div class="note-tags-and-assignees">
+                        <div class="note-tags" th:if="${not #lists.isEmpty(note.tags)}">
+                            <span th:each="tag : ${note.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
+                        </div>
+                        <div class="note-assignees" th:if="${not #lists.isEmpty(note.teamMembers)}" style="display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center;">
+                            <span th:each="tm : ${note.teamMembers}" class="assignee-badge" th:text="${tm.name}">Assignee</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -1231,6 +1273,20 @@
                 allowClear: true,
                 width: '100%'
             });
+
+            // Initialize Select2 for team members dropdown
+            $('#teamMembers').select2({
+                placeholder: 'Select assignee to filter...',
+                allowClear: true,
+                width: '100%'
+            });
+
+            // Handle form submission - ensure Select2 values are properly submitted
+            $('#filterForm').on('submit', function(e) {
+                // Select2 automatically handles value submission, but let's ensure it's working
+                const selectedTeamMembers = $('#teamMembers').val();
+                console.log('Team Members Filter Submit:', selectedTeamMembers);
+            });
         });
 
         function toggleFavorite(button) {
@@ -1274,6 +1330,7 @@
         function toggleTrackNote(button, event) {
             event.stopPropagation();
             const noteId = button.getAttribute('data-note-id');
+            const itemType = button.getAttribute('data-item-type') || 'NOTE';
             const isCurrentlyTracked = button.classList.contains('active');
             const endpoint = isCurrentlyTracked ? 'untrack-today' : 'track-today';
             const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
@@ -1281,7 +1338,8 @@
 
             button.disabled = true;
 
-            fetch(`/api/notes/${noteId}/${endpoint}`, {
+            const url = itemType === 'SUBNOTE' ? `/api/notes/subnote/${noteId}/${endpoint}` : `/api/notes/${noteId}/${endpoint}`;
+            fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

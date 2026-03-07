@@ -455,6 +455,7 @@
                     <a href="/notes" class="btn-header btn-header-light">📝 Notes</a>
                     <a href="/tasks" class="btn-header btn-header-light">✓ Tasks</a>
                     <a href="/tags" class="btn-header btn-header-light">🏷️ Tags</a>
+                    <a href="/team-members" class="btn-header btn-header-light">👥 Team Members</a>
                     <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
                     
                     <div class="btn-group-separator"></div>
@@ -548,6 +549,32 @@
                     </div>
                 </div>
                 
+                <!-- Team Member Filter Multi-Select Dropdown -->
+                <div class="dropdown" style="position: relative;">
+                    <button class="btn btn-outline-secondary dropdown-toggle" 
+                            id="teamMemberFilterBtn"
+                            type="button" 
+                            onclick="toggleTeamMemberDropdown()" 
+                            style="padding: 0.4rem 0.8rem; font-size: 0.9rem; border-radius: 6px;">
+                        👤 Select Assignee
+                    </button>
+                    <div id="teamMemberFilterDropdown" 
+                         class="dropdown-menu" 
+                         style="display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #dee2e6; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 200px; padding: 0.5rem;">
+                        <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                            <input type="checkbox" id="teamMemberSelectAll" onchange="toggleAllTeamMembers()" style="margin-right: 0.5rem;">
+                            <strong>All Assignees</strong>
+                        </label>
+                        <div style="border-top: 1px solid #dee2e6; margin: 0.25rem 0;"></div>
+                        <th:block th:each="tm : ${allTeamMembers}">
+                            <label style="display: block; padding: 0.5rem 0.75rem; margin: 0; cursor: pointer; white-space: nowrap;">
+                                <input type="checkbox" class="team-member-checkbox" th:value="${tm.id}" th:data-name="${tm.name}" onchange="updateTeamMemberFilter()" style="margin-right: 0.5rem;">
+                                <span th:text="${tm.name}">Team Member</span>
+                            </label>
+                        </th:block>
+                    </div>
+                </div>
+                
                 <!-- Note Filter Multi-Select Dropdown -->
                 <div class="dropdown" style="position: relative;">
                     <button class="btn btn-outline-secondary dropdown-toggle" 
@@ -601,7 +628,7 @@
                     <!-- Grouped by Note View -->
                     <div th:if="${groupByNote}" class="sub-notes-container">
                         <th:block>
-                            <div th:each="noteEntry : ${noteSubNotesMap}" class="note-group" th:data-note-id="${noteEntry.key}">
+                            <div th:each="noteEntry : ${noteSubNotesMap}" class="note-group" th:data-note-id="${noteEntry.key}" th:data-team-member-ids="${#strings.listJoin(parentNotes.get(noteEntry.key).teamMembers.![id], ',')}">
                                 <div class="note-group-header" th:data-isFavorite="${parentNotes.get(noteEntry.key).favorite}">
                                     <span class="note-group-title">
                                         📝 <span th:text="${parentNotes.get(noteEntry.key).name}">Note Name</span>
@@ -618,13 +645,31 @@
                                      th:data-parentisfavorite="${subNote.note != null && subNote.note.favorite}"
                                      th:data-subnote-id="${subNote.id}"
                                      th:data-parent-note-id="${noteEntry.key}"
+                                     th:data-team-member-ids="${#strings.listJoin(subNote.teamMembers.![id], ',')}"
                                      th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">
                                     <div class="sub-note-header"
                                          th:onclick="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null} ? 'toggleDescription(' + ${subNote.id} + ')' : ''">
-                                        <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
-                                            <span th:text="${subNote.header}">Sub-note header</span>
-                                            <span th:if="${subNote.linkedNoteId != null}" class="linked-note-badge">LINKED</span>
-                                        </h6>
+                                        <div style="margin-bottom: 0.25rem;">
+                                            <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
+                                                <span th:text="${subNote.header}">Sub-note header</span>
+                                                <span th:if="${subNote.linkedNoteId != null}" class="linked-note-badge">LINKED</span>
+                                            </h6>
+                                        </div>
+                                        <!-- Tags and Assignees Display -->
+                                        <div th:if="${(subNote.tags != null && !subNote.tags.isEmpty()) || (subNote.teamMembers != null && !subNote.teamMembers.isEmpty())}" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.15rem; margin-bottom: 0.25rem;">
+                                            <div th:if="${subNote.tags != null && !subNote.tags.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                                <span th:each="tag : ${subNote.tags}" 
+                                                      class="tag-badge" 
+                                                      style="background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%); color: #1565c0; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #bbdefb; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                                      th:text="${tag.name}">Tag</span>
+                                            </div>
+                                            <div th:if="${subNote.teamMembers != null && !subNote.teamMembers.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                                <span th:each="tm : ${subNote.teamMembers}" 
+                                                      class="assignee-badge" 
+                                                      style="background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%); color: #1b5e20; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #81c784; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                                      th:text="${tm.name}">Assignee</span>
+                                            </div>
+                                        </div>
                                         <div class="sub-note-actions">
                                             <button th:class="${'btn btn-sm track-subnote-btn ' + (subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
                                                     th:attr="data-subnote-id=${subNote.id}"
@@ -743,20 +788,38 @@
                              th:data-parentisfavorite="${subNote.note != null && subNote.note.favorite}"
                              th:data-subnote-id="${subNote.id}"
                              th:data-parent-note-id="${subNote.note != null ? subNote.note.id : ''}"
+                             th:data-team-member-ids="${#strings.listJoin(subNote.teamMembers.![id], ',')}"
                              th:style="${iterStat.even ? 'background-color: #e8f4f8 !important;' : 'background-color: #ffffff !important;'}">
                             <div class="sub-note-header"
                                  th:onclick="${(subNote.description != null && !#strings.isEmpty(#strings.trim(subNote.description)) && subNote.description != '<p><br></p>') || subNote.linkedNoteId != null} ? 'toggleDescription(' + ${subNote.id} + ')' : ''">
-                                <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
-                                    <span th:text="${subNote.header}">Sub-note header</span>
-                                    <span th:if="${subNote.linkedNoteId != null}" class="linked-note-badge">LINKED</span>
-                                    <a th:if="${subNote.note != null && parentNotes.get(subNote.note.id) != null}" 
-                                       th:href="@{/notes/{id}(id=${subNote.note.id})}"
-                                       class="parent-note-badge"
-                                       onclick="event.stopPropagation()"
-                                       th:title="'View parent note: ' + ${parentNotes.get(subNote.note.id).name}">
-                                        📝 <span th:text="${parentNotes.get(subNote.note.id).name}">Parent Note</span>
-                                    </a>
-                                </h6>
+                                <div style="margin-bottom: 0.25rem;">
+                                    <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
+                                        <span th:text="${subNote.header}">Sub-note header</span>
+                                        <span th:if="${subNote.linkedNoteId != null}" class="linked-note-badge">LINKED</span>
+                                        <a th:if="${subNote.note != null && parentNotes.get(subNote.note.id) != null}" 
+                                           th:href="@{/notes/{id}(id=${subNote.note.id})}"
+                                           class="parent-note-badge"
+                                           onclick="event.stopPropagation()"
+                                           th:title="'View parent note: ' + ${parentNotes.get(subNote.note.id).name}">
+                                            📝 <span th:text="${parentNotes.get(subNote.note.id).name}">Parent Note</span>
+                                        </a>
+                                    </h6>
+                                </div>
+                                <!-- Tags and Assignees Display -->
+                                <div th:if="${(subNote.tags != null && !subNote.tags.isEmpty()) || (subNote.teamMembers != null && !subNote.teamMembers.isEmpty())}" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.15rem; margin-bottom: 0.25rem;">
+                                    <div th:if="${subNote.tags != null && !subNote.tags.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                        <span th:each="tag : ${subNote.tags}" 
+                                              class="tag-badge" 
+                                              style="background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%); color: #1565c0; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #bbdefb; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                              th:text="${tag.name}">Tag</span>
+                                    </div>
+                                    <div th:if="${subNote.teamMembers != null && !subNote.teamMembers.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                        <span th:each="tm : ${subNote.teamMembers}" 
+                                              class="assignee-badge" 
+                                              style="background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%); color: #1b5e20; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #81c784; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                              th:text="${tm.name}">Assignee</span>
+                                    </div>
+                                </div>
                                 <div class="sub-note-actions">
                                     <button th:class="${'btn btn-sm track-subnote-btn ' + (subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
                                             th:attr="data-subnote-id=${subNote.id}"
@@ -818,13 +881,31 @@
                              th:classappend="${note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'tracked-today' : ''}"
                              th:data-parentisfavorite="${note.favorite}"
                              th:data-parent-note-id="${note.id}"
+                             th:data-team-member-ids="${#strings.listJoin(note.teamMembers.![id], ',')}"
                              data-note-only="true">
                             <div class="sub-note-header"
                                  th:onclick="${note.details != null && !#strings.isEmpty(#strings.trim(note.details)) && note.details != '<p><br></p>'} ? 'toggleNoteDescription(' + ${note.id} + ')' : ''">
-                                <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
-                                    📝 <span th:text="${note.name}">Note Name</span>
-                                    <span class="linked-note-badge" style="background-color: #6c757d;">NOTE</span>
-                                </h6>
+                                <div style="margin-bottom: 0.25rem;">
+                                    <h6 style="margin: 0; font-weight: 600; color: #2c3e50; flex: 1; font-size: 0.95rem;">
+                                        📝 <span th:text="${note.name}">Note Name</span>
+                                        <span class="linked-note-badge" style="background-color: #6c757d;">NOTE</span>
+                                    </h6>
+                                </div>
+                                <!-- Tags and Assignees Display -->
+                                <div th:if="${(note.tags != null && !note.tags.isEmpty()) || (note.teamMembers != null && !note.teamMembers.isEmpty())}" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.15rem; margin-bottom: 0.25rem;">
+                                    <div th:if="${note.tags != null && !note.tags.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                        <span th:each="tag : ${note.tags}" 
+                                              class="tag-badge" 
+                                              style="background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%); color: #1565c0; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #bbdefb; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                              th:text="${tag.name}">Tag</span>
+                                    </div>
+                                    <div th:if="${note.teamMembers != null && !note.teamMembers.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                        <span th:each="tm : ${note.teamMembers}" 
+                                              class="assignee-badge" 
+                                              style="background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%); color: #1b5e20; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #81c784; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                              th:text="${tm.name}">Assignee</span>
+                                    </div>
+                                </div>
                                 <div class="sub-note-actions note-only-actions">
                                     <button th:class="${'btn btn-sm track-subnote-btn ' + (note.lastTrackedDate != null && #temporals.format(note.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
                                             th:attr="data-note-id=${note.id}"
@@ -1469,10 +1550,9 @@
                 btn.textContent = '⭕ Track Status';
             }
             
-            applyTrackStatusFilter();
+            applyBucketFilter();
             updateBucketCountSummary(); // Call after filter to ensure counts are updated
             updateAvailableNotes(); // Update notes dropdown based on current filters
-            applyNoteFilter(); // Re-apply note filter with updated note selection
             setTimeout(updateCountsAndLegends, 50);
             localStorage.setItem('consolidatedViewTrackStatusFilter', selectedStatus);
         }
@@ -1605,7 +1685,6 @@
             applyBucketFilter();
             updateBucketCountSummary(); // Call after applyBucketFilter to ensure visibility is updated
             updateAvailableNotes(); // Update notes dropdown based on current filters
-            applyNoteFilter(); // Re-apply note filter with updated note selection
             setTimeout(updateCountsAndLegends, 50);
             localStorage.setItem('consolidatedViewBucketFilter', JSON.stringify(selectedBuckets));
         }
@@ -1669,8 +1748,16 @@
                 const noteId = noteGroup ? noteGroup.getAttribute('data-note-id') : item.getAttribute('data-parent-note-id');
                 let noteFilterMatches = selectedNotes.length === 0 || selectedNotes.length === noteCheckboxes.length || (noteId && selectedNotes.includes(noteId));
                 
+                // Check team member filter
+                const tmCheckboxes = document.querySelectorAll('.team-member-checkbox');
+                const selectedTeamMembers = Array.from(tmCheckboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => Number(cb.value));
+                const tmIds = (item.getAttribute('data-team-member-ids') || '').split(',').filter(id => id).map(Number);
+                let teamMemberFilterMatches = selectedTeamMembers.length === 0 || tmIds.some(id => selectedTeamMembers.includes(id));
+                
                 // Show item only if all filters match
-                item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches && noteFilterMatches) ? 'block' : 'none';
+                item.style.display = (trackStatusMatches && favoriteFilterMatches && bucketFilterMatches && noteFilterMatches && teamMemberFilterMatches) ? 'block' : 'none';
             });
 
             updateNoteGroupVisibility();
@@ -1715,6 +1802,81 @@
                 const items = group.querySelectorAll('.sub-note-item');
                 const visibleItems = Array.from(items).filter(item => item.style.display !== 'none');
                 group.style.display = visibleItems.length === 0 ? 'none' : 'block';
+            });
+        }
+        
+        // Toggle team member filter dropdown
+        function toggleTeamMemberDropdown() {
+            const dropdown = document.getElementById('teamMemberFilterDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            
+            // Close when clicking outside
+            document.addEventListener('click', function(event) {
+                const btn = document.getElementById('teamMemberFilterBtn');
+                const menu = document.getElementById('teamMemberFilterDropdown');
+                if (!btn.contains(event.target) && !menu.contains(event.target)) {
+                    menu.style.display = 'none';
+                }
+            });
+        }
+        
+        // Toggle all team members checkbox
+        function toggleAllTeamMembers() {
+            const selectAllCheckbox = document.getElementById('teamMemberSelectAll');
+            const tmCheckboxes = document.querySelectorAll('.team-member-checkbox');
+            
+            tmCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            
+            updateTeamMemberFilter();
+        }
+        
+        // Update team member filter when selection changes
+        function updateTeamMemberFilter() {
+            const tmCheckboxes = document.querySelectorAll('.team-member-checkbox');
+            const selectedTeamMembers = Array.from(tmCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            const selectAllCheckbox = document.getElementById('teamMemberSelectAll');
+            selectAllCheckbox.checked = selectedTeamMembers.length === tmCheckboxes.length;
+            
+            // Update button text
+            const btn = document.getElementById('teamMemberFilterBtn');
+            if (selectedTeamMembers.length === 0 || selectedTeamMembers.length === tmCheckboxes.length) {
+                btn.textContent = '👤 Select Assignee';
+            } else if (selectedTeamMembers.length === 1) {
+                const tmName = document.querySelector(`.team-member-checkbox[value="${selectedTeamMembers[0]}"]`).getAttribute('data-name');
+                btn.textContent = '👤 ' + tmName;
+            } else {
+                btn.textContent = '👤 ' + selectedTeamMembers.length + ' Assignees';
+            }
+            
+            applyBucketFilter();
+            updateCountsAndLegends();
+            localStorage.setItem('consolidatedViewTeamMemberFilter', JSON.stringify(selectedTeamMembers));
+        }
+        
+        // Apply team member filter
+        function applyTeamMemberFilter() {
+            const tmCheckboxes = document.querySelectorAll('.team-member-checkbox');
+            const selectedTeamMembers = Array.from(tmCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => Number(cb.value));
+            
+            // Use more specific selectors to only target container elements, not buttons/selects inside them
+            const noteItems = document.querySelectorAll('.note-group[data-note-id], .sub-note-item[data-subnote-id]');
+            
+            noteItems.forEach(item => {
+                const tmIds = (item.getAttribute('data-team-member-ids') || '').split(',').filter(id => id).map(Number);
+                
+                // Show item if no filter or if any selected team member is assigned
+                if (selectedTeamMembers.length === 0 || tmIds.some(id => selectedTeamMembers.includes(id))) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
             });
         }
         
@@ -1767,7 +1929,7 @@
                 btn.textContent = '📝 ' + selectedNotes.length + ' Notes';
             }
             
-            applyNoteFilter();
+            applyBucketFilter();
             updateBucketCountSummary();
             localStorage.setItem('consolidatedViewNoteFilter', JSON.stringify(selectedNotes));
         }

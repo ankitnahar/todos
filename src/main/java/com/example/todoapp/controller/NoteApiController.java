@@ -50,6 +50,13 @@ public class NoteApiController {
                 note.getDeleted()
         );
 
+        // Convert team members
+        if (note.getTeamMembers() != null) {
+            note.getTeamMembers().forEach(tm -> {
+                dto.getTeamMembers().add(new com.example.todoapp.dto.TeamMemberDTO(tm.getId(), tm.getName()));
+            });
+        }
+
         // Convert sub-notes
         if (note.getSubNotes() != null) {
             for (SubNote subNote : note.getSubNotes()) {
@@ -62,6 +69,14 @@ public class NoteApiController {
                         subNote.getCreatedAt(),
                         subNote.getUpdatedAt()
                 );
+                
+                // Convert sub-note team members
+                if (subNote.getTeamMembers() != null) {
+                    subNote.getTeamMembers().forEach(tm -> {
+                        subNoteDTO.getTeamMembers().add(new com.example.todoapp.dto.TeamMemberDTO(tm.getId(), tm.getName()));
+                    });
+                }
+                
                 dto.addSubNote(subNoteDTO);
             }
         }

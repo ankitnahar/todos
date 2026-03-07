@@ -1,6 +1,8 @@
 package com.example.todoapp.dto;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 public class SubNoteDTO {
     private Long id;
@@ -10,6 +12,7 @@ public class SubNoteDTO {
     private Integer displayOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Set<TeamMemberDTO> teamMembers = new HashSet<>();
 
     public SubNoteDTO() {
     }
@@ -79,5 +82,13 @@ public class SubNoteDTO {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Set<TeamMemberDTO> getTeamMembers() {
+        return teamMembers;
+    }
+
+    public void setTeamMembers(Set<TeamMemberDTO> teamMembers) {
+        this.teamMembers = teamMembers;
     }
 }

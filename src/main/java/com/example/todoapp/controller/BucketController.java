@@ -5,6 +5,7 @@ import com.example.todoapp.model.SubNote;
 import com.example.todoapp.model.Note;
 import com.example.todoapp.service.BucketService;
 import com.example.todoapp.service.NoteService;
+import com.example.todoapp.service.TeamMemberService;
 import com.example.todoapp.repository.SubNoteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -24,12 +25,14 @@ public class BucketController {
     private final BucketService bucketService;
     private final SubNoteRepository subNoteRepository;
     private final NoteService noteService;
+    private final TeamMemberService teamMemberService;
 
     @Autowired
-    public BucketController(BucketService bucketService, SubNoteRepository subNoteRepository, NoteService noteService) {
+    public BucketController(BucketService bucketService, SubNoteRepository subNoteRepository, NoteService noteService, TeamMemberService teamMemberService) {
         this.bucketService = bucketService;
         this.subNoteRepository = subNoteRepository;
         this.noteService = noteService;
+        this.teamMemberService = teamMemberService;
     }
 
     @GetMapping
@@ -101,6 +104,9 @@ public class BucketController {
         model.addAttribute("bucketNotes", bucketNotes);
         model.addAttribute("parentNotes", parentNotes);
         model.addAttribute("groupByNote", groupByNote);
+        
+        // Add team members for filtering
+        model.addAttribute("allTeamMembers", teamMemberService.findAll());
         
         return "bucket-consolidated-view";
     }

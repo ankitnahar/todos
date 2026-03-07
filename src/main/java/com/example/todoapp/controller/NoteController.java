@@ -5,9 +5,11 @@ import com.example.todoapp.model.Note;
 import com.example.todoapp.model.SubNote;
 import com.example.todoapp.model.Task;
 import com.example.todoapp.model.Tag;
+import com.example.todoapp.model.TeamMember;
 import com.example.todoapp.model.Bucket;
 import com.example.todoapp.service.NoteService;
 import com.example.todoapp.service.TagService;
+import com.example.todoapp.service.TeamMemberService;
 import com.example.todoapp.service.BucketService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -31,12 +33,14 @@ public class NoteController {
 
     private final NoteService noteService;
     private final TagService tagService;
+    private final TeamMemberService teamMemberService;
     private final BucketService bucketService;
 
     @Autowired
-    public NoteController(NoteService noteService, TagService tagService, BucketService bucketService) {
+    public NoteController(NoteService noteService, TagService tagService, TeamMemberService teamMemberService, BucketService bucketService) {
         this.noteService = noteService;
         this.tagService = tagService;
+        this.teamMemberService = teamMemberService;
         this.bucketService = bucketService;
     }
 
@@ -45,49 +49,98 @@ public class NoteController {
                            @RequestParam(required = false) String search,
                            @RequestParam(required = false) List<Long> tagIds,
                            @RequestParam(required = false) List<Long> bucketIds,
+                           @RequestParam(required = false) List<Long> teamMemberIds,
                            @RequestParam(required = false) String trackStatus,
                            @RequestParam(required = false) String quickFilter,
                            @RequestParam(required = false, defaultValue = "AND") String tagMatchMode,
                            HttpServletRequest request) {
         
-        // Get all tags and buckets for the filter dropdown
+        // Get all tags, buckets, and team members for the filter dropdown
         List<Tag> allTags = tagService.findAll();
         List<Bucket> allBuckets = bucketService.getAllBuckets();
+        List<TeamMember> allTeamMembers = teamMemberService.findAll();
         model.addAttribute("allTags", allTags);
         model.addAttribute("allBuckets", allBuckets);
+        model.addAttribute("allTeamMembers", allTeamMembers);
         
         // Apply filters
-        boolean hasFilters = (search != null && !search.isBlank()) || (tagIds != null && !tagIds.isEmpty()) || (bucketIds != null && !bucketIds.isEmpty());
+        boolean hasFilters = (search != null && !search.isBlank()) || (tagIds != null && !tagIds.isEmpty()) || (bucketIds != null && !bucketIds.isEmpty()) || (teamMemberIds != null && !teamMemberIds.isEmpty());
+        
+        List<Note> filteredNotes = new ArrayList<>();
+        List<SearchResultDTO> searchResults = new ArrayList<>();
         
         if (hasFilters) {
-            // Use combined filter method that handles search, tags, and buckets together
+            // Use combined filter method that handles search, tags, buckets and team members together
             Set<Long> tagIdSet = tagIds != null ? new HashSet<>(tagIds) : Collections.emptySet();
             Set<Long> bucketIdSet = bucketIds != null ? new HashSet<>(bucketIds) : Collections.emptySet();
-            List<SearchResultDTO> searchResults = noteService.findByFilters(search, tagIdSet, bucketIdSet, tagMatchMode);
+            Set<Long> teamMemberIdSet = teamMemberIds != null ? new HashSet<>(teamMemberIds) : Collections.emptySet();
+            
+            // Check if only team member filter is applied (no search, tags, or buckets)
+            boolean onlyTeamMemberFilter = (search == null || search.isBlank()) 
+                && tagIdSet.isEmpty() 
+                && bucketIdSet.isEmpty() 
+                && !teamMemberIdSet.isEmpty();
+            
+            if (onlyTeamMemberFilter) {
+                // When only team member filter is applied, get all notes and subnotes, then filter by team members
+                List<Note> allNotes = noteService.findAll();
+                searchResults = new ArrayList<>();
+                
+                for (Note note : allNotes) {
+                    if (note.getTeamMembers().stream().map(TeamMember::getId).anyMatch(teamMemberIdSet::contains)) {
+                        searchResults.add(SearchResultDTO.fromNote(note));
+                    }
+                    // Also add subnotes that match the team member filter
+                    if (note.getSubNotes() != null) {
+                        for (SubNote subNote : note.getSubNotes()) {
+                            if (subNote.getTeamMembers().stream().map(TeamMember::getId).anyMatch(teamMemberIdSet::contains)) {
+                                searchResults.add(SearchResultDTO.fromSubNote(subNote, note));
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Use normal filter method for search, tags, or buckets
+                searchResults = noteService.findByFilters(search, tagIdSet, bucketIdSet, tagMatchMode);
+                
+                // Apply team member filter
+                if (!teamMemberIdSet.isEmpty()) {
+                    searchResults = searchResults.stream()
+                        .filter(result -> {
+                            // Check if note has any of the selected team members
+                            Set<Long> noteTeamMemberIds = result.getTeamMemberIds();
+                            return noteTeamMemberIds.stream().anyMatch(teamMemberIdSet::contains);
+                        })
+                        .collect(Collectors.toList());
+                }
+            }
+            
             if (trackStatus != null && !trackStatus.isBlank() && !"all".equalsIgnoreCase(trackStatus)) {
                 searchResults = searchResults.stream()
                     .filter(result -> matchesTrackStatus(result.getLastTrackedDate(), trackStatus))
                     .collect(Collectors.toList());
             }
             model.addAttribute("searchResults", searchResults);
-            model.addAttribute("notes", Collections.emptyList()); // Empty for backward compatibility
+            model.addAttribute("notes", Collections.emptyList());
         } else {
             // No filters - show all notes
-            List<Note> notes = noteService.findAll();
+            filteredNotes = noteService.findAll();
             if (trackStatus != null && !trackStatus.isBlank() && !"all".equalsIgnoreCase(trackStatus)) {
-                notes = notes.stream()
+                filteredNotes = filteredNotes.stream()
                     .filter(note -> matchesTrackStatus(note.getLastTrackedDate(), trackStatus))
                     .collect(Collectors.toList());
             }
-            model.addAttribute("notes", notes);
+            model.addAttribute("notes", filteredNotes);
             model.addAttribute("searchResults", Collections.emptyList());
         }
         
         Set<Long> tagIdSet = tagIds != null ? new HashSet<>(tagIds) : Collections.emptySet();
         Set<Long> bucketIdSet = bucketIds != null ? new HashSet<>(bucketIds) : Collections.emptySet();
+        Set<Long> teamMemberIdSet = teamMemberIds != null ? new HashSet<>(teamMemberIds) : Collections.emptySet();
         model.addAttribute("search", search);
         model.addAttribute("selectedTagIds", tagIdSet);
         model.addAttribute("selectedBucketIds", bucketIdSet);
+        model.addAttribute("selectedTeamMemberIds", teamMemberIdSet);
         model.addAttribute("selectedTrackStatus", trackStatus != null ? trackStatus : "all");
         model.addAttribute("selectedTagMatchMode", tagMatchMode != null ? tagMatchMode : "AND");
         
@@ -105,6 +158,13 @@ public class NoteController {
                     .map(Bucket::getName)
                     .collect(Collectors.joining(", "));
             filterLabel.append("Buckets: ").append(bucketNames).append("; ");
+        }
+        if (teamMemberIdSet != null && !teamMemberIdSet.isEmpty()) {
+            String teamMemberNames = allTeamMembers.stream()
+                    .filter(tm -> teamMemberIdSet.contains(tm.getId()))
+                    .map(TeamMember::getName)
+                    .collect(Collectors.joining(", "));
+            filterLabel.append("Team Members: ").append(teamMemberNames).append("; ");
         }
         if (trackStatus != null && !trackStatus.isBlank() && !"all".equalsIgnoreCase(trackStatus)) {
             filterLabel.append("Track: ").append(trackStatus).append("; ");
@@ -143,7 +203,9 @@ public class NoteController {
     public String showAddForm(Model model) {
         model.addAttribute("note", new Note());
         List<Tag> allTags = tagService.findAll();
+        List<TeamMember> allTeamMembers = teamMemberService.findAll();
         model.addAttribute("allTags", allTags);
+        model.addAttribute("allTeamMembers", allTeamMembers);
         model.addAttribute("allBuckets", bucketService.getAllBuckets());
         
         // Create JSON string for tags
@@ -164,6 +226,24 @@ public class NoteController {
         tagsJson.append("]");
         model.addAttribute("tagsJson", tagsJson.toString());
         
+        // Create JSON string for team members
+        StringBuilder teamMembersJson = new StringBuilder("[");
+        if (allTeamMembers != null) {
+            boolean first = true;
+            for (TeamMember tm : allTeamMembers) {
+                if (tm != null && tm.getName() != null) {
+                    if (!first) teamMembersJson.append(",");
+                    teamMembersJson.append("{")
+                        .append("\"id\":").append(tm.getId()).append(",")
+                        .append("\"name\":\"").append(escapeJson(tm.getName())).append("\"")
+                        .append("}");
+                    first = false;
+                }
+            }
+        }
+        teamMembersJson.append("]");
+        model.addAttribute("teamMembersJson", teamMembersJson.toString());
+        
         return "add-note";
     }
 
@@ -171,14 +251,17 @@ public class NoteController {
     public String addNote(@Valid @ModelAttribute("note") Note note, 
                          BindingResult result, 
                          @RequestParam(required = false) List<Long> tagIds,
+                         @RequestParam(required = false) List<Long> teamMemberIds,
                          @RequestParam(required = false) Long bucketId,
                          @RequestParam(required = false) Boolean nested,
                          @RequestParam(required = false) List<Long> subNoteBucketIds,
                          @RequestParam(required = false) List<String> subNoteTagIds,
+                         @RequestParam(required = false) List<String> subNoteTeamMemberIds,
                          @RequestParam MultiValueMap<String, String> formParams,
                          Model model) {
         if (result.hasErrors()) {
             model.addAttribute("allTags", tagService.findAll());
+            model.addAttribute("allTeamMembers", teamMemberService.findAll());
             model.addAttribute("allBuckets", bucketService.getAllBuckets());
             return "add-note";
         }
@@ -187,6 +270,12 @@ public class NoteController {
         if (tagIds != null && !tagIds.isEmpty()) {
             List<Tag> selectedTags = tagService.findAllByIds(tagIds);
             note.setTags(new HashSet<>(selectedTags));
+        }
+        
+        // Handle team members by IDs
+        if (teamMemberIds != null && !teamMemberIds.isEmpty()) {
+            List<TeamMember> selectedTeamMembers = teamMemberService.findAllByIds(teamMemberIds);
+            note.setTeamMembers(new HashSet<>(selectedTeamMembers));
         }
         
         // Get default bucket
@@ -241,6 +330,28 @@ public class NoteController {
                         System.out.println("[NOTE CONTROLLER CREATE] SubNote " + i + " has no tags");
                     }
                     
+                    // Handle subnote team members
+                    if (subNoteTeamMemberIds != null && i < subNoteTeamMemberIds.size() && subNoteTeamMemberIds.get(i) != null && !subNoteTeamMemberIds.get(i).isEmpty()) {
+                        String[] tmIdArray = subNoteTeamMemberIds.get(i).split(",");
+                        Set<TeamMember> subNoteTeamMembers = new HashSet<>();
+                        System.out.println("[NOTE CONTROLLER CREATE] SubNote " + i + " team members: " + subNoteTeamMemberIds.get(i));
+                        for (String tmIdStr : tmIdArray) {
+                            try {
+                                Long tmId = Long.parseLong(tmIdStr.trim());
+                                teamMemberService.findById(tmId).ifPresent(tm -> {
+                                    subNoteTeamMembers.add(tm);
+                                    System.out.println("[NOTE CONTROLLER CREATE] Added team member: " + tm.getName());
+                                });
+                            } catch (NumberFormatException e) {
+                                // Skip invalid team member IDs
+                            }
+                        }
+                        subNote.setTeamMembers(subNoteTeamMembers);
+                        System.out.println("[NOTE CONTROLLER CREATE] SubNote final team member count: " + subNoteTeamMembers.size());
+                    } else {
+                        System.out.println("[NOTE CONTROLLER CREATE] SubNote " + i + " has no team members");
+                    }
+                    
                     note.addSubNote(subNote);
                 }
             }
@@ -281,6 +392,7 @@ public class NoteController {
         }
         model.addAttribute("note", note);
         model.addAttribute("allTags", tagService.findAll());
+        model.addAttribute("allTeamMembers", teamMemberService.findAll());
         // Filter out any null buckets
         List<Bucket> buckets = bucketService.getAllBuckets();
         System.out.println("[NOTE CONTROLLER] showEditForm - Before filter: " + (buckets != null ? buckets.size() : "NULL") + " buckets");
@@ -329,6 +441,18 @@ public class NoteController {
                             tagIndex++;
                         }
                     }
+                    subNotesJson.append("],")
+                        .append("\"teamMemberIds\":[");
+                    
+                    // Add team member IDs
+                    if (subNote.getTeamMembers() != null && !subNote.getTeamMembers().isEmpty()) {
+                        int tmIndex = 0;
+                        for (TeamMember tm : subNote.getTeamMembers()) {
+                            if (tmIndex > 0) subNotesJson.append(",");
+                            subNotesJson.append(tm.getId());
+                            tmIndex++;
+                        }
+                    }
                     subNotesJson.append("]")
                         .append("}");
                 }
@@ -357,6 +481,25 @@ public class NoteController {
         }
         tagsJson.append("]");
         model.addAttribute("tagsJson", tagsJson.toString());
+
+        // Create JSON string for team members
+        List<TeamMember> allTeamMembers = teamMemberService.findAll();
+        StringBuilder teamMembersJson = new StringBuilder("[");
+        if (allTeamMembers != null) {
+            boolean first = true;
+            for (TeamMember tm : allTeamMembers) {
+                if (tm != null && tm.getName() != null) {
+                    if (!first) teamMembersJson.append(",");
+                    teamMembersJson.append("{")
+                        .append("\"id\":").append(tm.getId()).append(",")
+                        .append("\"name\":\"").append(escapeJson(tm.getName())).append("\"")
+                        .append("}");
+                    first = false;
+                }
+            }
+        }
+        teamMembersJson.append("]");
+        model.addAttribute("teamMembersJson", teamMembersJson.toString());
         
         return "edit-note";
     }
@@ -375,18 +518,21 @@ public class NoteController {
                            @Valid @ModelAttribute("note") Note note,
                            BindingResult result,
                            @RequestParam(required = false) List<Long> tagIds,
+                           @RequestParam(required = false) List<Long> teamMemberIds,
                            @RequestParam(required = false) Long bucketId,
                            @RequestParam(required = false) Boolean nested,
                            @RequestParam(required = false) List<Long> subNoteIds,
                            @RequestParam(required = false) List<Long> subNoteLinkedNoteIds,
                            @RequestParam(required = false) List<Long> subNoteBucketIds,
                            @RequestParam(required = false) List<String> subNoteTagIds,
+                           @RequestParam(required = false) List<String> subNoteTeamMemberIds,
                            @RequestParam MultiValueMap<String, String> formParams,
                            Model model,
                            RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
             note.setId(id);
             model.addAttribute("allTags", tagService.findAll());
+            model.addAttribute("allTeamMembers", teamMemberService.findAll());
             model.addAttribute("allBuckets", bucketService.getAllBuckets());
             return "edit-note";
         }
@@ -406,6 +552,14 @@ public class NoteController {
             note.setTags(new HashSet<>(selectedTags));
         } else {
             note.setTags(new HashSet<>());
+        }
+        
+        // Handle team members by IDs
+        if (teamMemberIds != null && !teamMemberIds.isEmpty()) {
+            List<TeamMember> selectedTeamMembers = teamMemberService.findAllByIds(teamMemberIds);
+            note.setTeamMembers(new HashSet<>(selectedTeamMembers));
+        } else {
+            note.setTeamMembers(new HashSet<>());
         }
         
         // Get default bucket
@@ -500,6 +654,28 @@ public class NoteController {
                         System.out.println("[NOTE CONTROLLER UPDATE] SubNote final tag count: " + subNoteTags.size());
                     } else {
                         System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " has no tags");
+                    }
+                    
+                    // Handle subnote team members
+                    if (subNoteTeamMemberIds != null && i < subNoteTeamMemberIds.size() && subNoteTeamMemberIds.get(i) != null && !subNoteTeamMemberIds.get(i).isEmpty()) {
+                        String[] tmIdArray = subNoteTeamMemberIds.get(i).split(",");
+                        Set<TeamMember> subNoteTeamMembers = new HashSet<>();
+                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " team members: " + subNoteTeamMemberIds.get(i));
+                        for (String tmIdStr : tmIdArray) {
+                            try {
+                                Long tmId = Long.parseLong(tmIdStr.trim());
+                                teamMemberService.findById(tmId).ifPresent(tm -> {
+                                    subNoteTeamMembers.add(tm);
+                                    System.out.println("[NOTE CONTROLLER UPDATE] Added team member: " + tm.getName());
+                                });
+                            } catch (NumberFormatException e) {
+                                // Skip invalid team member IDs
+                            }
+                        }
+                        subNote.setTeamMembers(subNoteTeamMembers);
+                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote final team member count: " + subNoteTeamMembers.size());
+                    } else {
+                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " has no team members");
                     }
                     
                     subNote.setDisplayOrder(i);

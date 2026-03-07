@@ -316,6 +316,7 @@
                     <!-- Navigation -->
                     <a href="/tasks" class="btn-header btn-header-light">✓ Tasks</a>
                     <a href="/tags" class="btn-header btn-header-light">🏷️ Tags</a>
+                    <a href="/team-members" class="btn-header btn-header-light">👥 Team Members</a>
                     <a href="/buckets" class="btn-header btn-header-light">🗂️ Buckets</a>
                     
                     <div class="btn-group-separator"></div>
@@ -341,8 +342,22 @@
             <div class="card-header">
                 <h5 th:text="${note.name}">Note Title</h5>
                 <small class="text-muted" th:text="'Created on ' + ${#temporals.format(note.createdAt, 'yyyy-MM-dd HH:mm')}">Created on</small>
-                <div class="mt-2" th:if="${not #lists.isEmpty(note.tags)}">
-                    <span th:each="tag : ${note.tags}" class="badge badge-info mr-1" th:text="${tag.name}">Tag</span>
+                <!-- Tags and Assignees Display -->
+                <div class="mt-2" style="display: flex; gap: 1rem;">
+                    <!-- Tags -->
+                    <div th:if="${not #lists.isEmpty(note.tags)}" style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                        <span th:each="tag : ${note.tags}" 
+                              class="tag-badge" 
+                              style="background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%); color: #1565c0; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #bbdefb; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;"
+                              th:text="${tag.name}">Tag</span>
+                    </div>
+                    <!-- Assignees -->
+                    <div th:if="${not #lists.isEmpty(note.teamMembers)}" style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                        <span th:each="tm : ${note.teamMembers}" 
+                              class="assignee-badge" 
+                              style="background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%); color: #1b5e20; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #81c784; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;"
+                              th:text="${tm.name}">Assignee</span>
+                    </div>
                 </div>
                 <!-- Bucket Selection -->
                 <div class="mt-3" style="display: flex; align-items: center; gap: 0.5rem;">
@@ -408,12 +423,20 @@
                                             <span th:text="${subNote.header}">Sub-note header</span>
                                             <span th:if="${subNote.linkedNoteId != null}" class="linked-note-badge">LINKED</span>
                                         </h6>
-                                        <!-- Subnote tags -->
-                                        <div th:if="${subNote.tags != null && !subNote.tags.isEmpty()}" style="display: flex; gap: 0.25rem; margin-top: 0.25rem; flex-wrap: wrap;">
-                                            <span th:each="tag : ${subNote.tags}" 
-                                                  class="tag-badge" 
-                                                  style="background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%); color: #1565c0; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #bbdefb;" 
-                                                  th:text="${tag.name}">Tag</span>
+                                        <!-- Subnote tags and assignees -->
+                                        <div th:if="${(subNote.tags != null && !subNote.tags.isEmpty()) || (subNote.teamMembers != null && !subNote.teamMembers.isEmpty())}" style="display: flex; gap: 0.5rem; margin-top: 0.25rem; flex-wrap: wrap;">
+                                            <div th:if="${subNote.tags != null && !subNote.tags.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                                <span th:each="tag : ${subNote.tags}" 
+                                                      class="tag-badge" 
+                                                      style="background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%); color: #1565c0; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #bbdefb; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                                      th:text="${tag.name}">Tag</span>
+                                            </div>
+                                            <div th:if="${subNote.teamMembers != null && !subNote.teamMembers.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                                <span th:each="tm : ${subNote.teamMembers}" 
+                                                      class="assignee-badge" 
+                                                      style="background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%); color: #1b5e20; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #81c784; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                                      th:text="${tm.name}">Assignee</span>
+                                            </div>
                                         </div>
                                         <div class="sub-note-actions">
                                             <!-- Track button -->

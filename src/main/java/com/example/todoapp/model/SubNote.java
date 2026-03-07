@@ -41,6 +41,12 @@ public class SubNote {
             inverseJoinColumns = @JoinColumn(name = "tag_id"))
     private Set<Tag> tags = new HashSet<>();
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "sub_note_team_members",
+            joinColumns = @JoinColumn(name = "sub_note_id"),
+            inverseJoinColumns = @JoinColumn(name = "team_member_id"))
+    private Set<TeamMember> teamMembers = new HashSet<>();
+
     @Column(name = "display_order")
     private Integer displayOrder;
 

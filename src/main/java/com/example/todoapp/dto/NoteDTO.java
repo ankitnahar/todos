@@ -5,7 +5,9 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Setter
 @Getter
@@ -20,6 +22,7 @@ public class NoteDTO {
     private Boolean favorite;
     private Boolean deleted;
     private List<SubNoteDTO> subNotes = new ArrayList<>();
+    private Set<TeamMemberDTO> teamMembers = new HashSet<>();
 
     public NoteDTO() {
     }

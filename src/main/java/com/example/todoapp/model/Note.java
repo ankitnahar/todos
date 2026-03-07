@@ -42,6 +42,12 @@ public class Note {
             inverseJoinColumns = @JoinColumn(name = "tag_id"))
     private Set<Tag> tags = new HashSet<>();
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "note_team_members",
+            joinColumns = @JoinColumn(name = "note_id"),
+            inverseJoinColumns = @JoinColumn(name = "team_member_id"))
+    private Set<TeamMember> teamMembers = new HashSet<>();
+
     @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean nested = false;
 
@@ -178,5 +184,13 @@ public class Note {
 
     public void setBucketId(Long bucketId) {
         this.bucketId = bucketId;
+    }
+
+    public Set<TeamMember> getTeamMembers() {
+        return teamMembers;
+    }
+
+    public void setTeamMembers(Set<TeamMember> teamMembers) {
+        this.teamMembers = teamMembers;
     }
 }

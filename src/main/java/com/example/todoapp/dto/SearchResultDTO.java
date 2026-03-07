@@ -3,11 +3,13 @@ package com.example.todoapp.dto;
 import com.example.todoapp.model.Note;
 import com.example.todoapp.model.SubNote;
 import com.example.todoapp.model.Tag;
+import com.example.todoapp.model.TeamMember;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -20,6 +22,8 @@ public class SearchResultDTO {
     private LocalDateTime updatedAt;
     private Boolean favorite;
     private Set<Tag> tags;
+    private Set<Long> teamMemberIds;
+    private Set<TeamMember> teamMembers;
     private LocalDateTime lastTrackedDate;
     
     // For subnotes - reference to parent note
@@ -39,6 +43,8 @@ public class SearchResultDTO {
         dto.setUpdatedAt(note.getUpdatedAt());
         dto.setFavorite(note.isFavorite());
         dto.setTags(note.getTags());
+        dto.setTeamMemberIds(note.getTeamMembers().stream().map(TeamMember::getId).collect(Collectors.toSet()));
+        dto.setTeamMembers(note.getTeamMembers());
         dto.setLastTrackedDate(note.getLastTrackedDate());
         dto.setBucketId(note.getBucketId());
         return dto;
@@ -53,6 +59,8 @@ public class SearchResultDTO {
         dto.setCreatedAt(subNote.getCreatedAt());
         dto.setUpdatedAt(subNote.getUpdatedAt());
         dto.setTags(subNote.getTags());
+        dto.setTeamMemberIds(subNote.getTeamMembers().stream().map(TeamMember::getId).collect(Collectors.toSet()));
+        dto.setTeamMembers(subNote.getTeamMembers());
         dto.setParentNoteId(parentNote.getId());
         dto.setParentNoteName(parentNote.getName());
         dto.setBucketId(subNote.getBucketId());

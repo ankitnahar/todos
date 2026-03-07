@@ -47,4 +47,13 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
 
     @Query("SELECT n FROM Note n LEFT JOIN FETCH n.subNotes WHERE n.id = :id")
     Note findByIdWithSubNotes(@Param("id") Long id);
+
+    @Query("SELECT DISTINCT n FROM Note n LEFT JOIN FETCH n.subNotes JOIN n.teamMembers tm WHERE n.deleted = false AND tm.id IN :teamMemberIds ORDER BY n.favorite DESC, n.updatedAt DESC")
+    List<Note> findByAnyTeamMemberIds(@Param("teamMemberIds") Set<Long> teamMemberIds);
+
+    @Query("SELECT DISTINCT n FROM Note n LEFT JOIN FETCH n.subNotes WHERE n.deleted = false AND SIZE(n.teamMembers) = 0 ORDER BY n.favorite DESC, n.updatedAt DESC")
+    List<Note> findUnassignedNotes();
+
+    @Query("SELECT DISTINCT n FROM Note n LEFT JOIN FETCH n.subNotes WHERE n.deleted = false AND n.bucketId = :bucketId AND SIZE(n.teamMembers) = 0 ORDER BY n.favorite DESC, n.updatedAt DESC")
+    List<Note> findUnassignedNotesByBucketId(@Param("bucketId") Long bucketId);
 }

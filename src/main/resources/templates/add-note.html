@@ -243,19 +243,91 @@
             display: inline;
         }
         
+        /* Subnote team member item styling (matching tag styling) */
+        .subnote-team-member-item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .subnote-team-member-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .subnote-team-member-item.selected {
+            background-color: #e7f3ff;
+            border-left: 3px solid #007bff;
+            padding-left: calc(0.75rem - 3px);
+        }
+        
+        .subnote-team-member-item input[type="checkbox"] {
+            display: none;
+        }
+        
+        .subnote-team-member-item label {
+            cursor: pointer;
+            margin: 0;
+            flex: 1;
+            user-select: none;
+        }
+        
+        .subnote-team-member-item .tag-check {
+            color: #007bff;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .subnote-team-member-item.selected .tag-check {
+            display: inline;
+        }
+        
+        .btn-subnote-team-members {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            margin-left: 0.5rem;
+            border-radius: 3px;
+        }
+        
+        .subnote-team-member-modal .modal-body {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .subnote-team-member-search-container {
+            position: relative;
+        }
+        
         .tag-badge {
             background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%);
             color: #1565c0;
-            padding: 0.1rem 0.35rem;
-            border-radius: 8px;
-            font-size: 0.6rem;
+            padding: 0.15rem 0.45rem;
+            border-radius: 10px;
+            font-size: 0.65rem;
             font-weight: 600;
             border: 1px solid #bbdefb;
-            letter-spacing: 0.2px;
+            letter-spacing: 0.3px;
             white-space: nowrap;
             display: inline-block;
-            margin-right: 0.2rem;
-            margin-bottom: 0.15rem;
+            line-height: 1.2;
+        }
+        
+        .assignee-badge {
+            background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%);
+            color: #1b5e20;
+            padding: 0.15rem 0.45rem;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            border: 1px solid #81c784;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            display: inline-block;
+            line-height: 1.2;
         }
         
         .selected-tags-display {
@@ -266,6 +338,40 @@
             flex-wrap: wrap;
             gap: 0.2rem;
             min-height: 0;
+        }
+        
+        /* Combined tags and team members display */
+        .subnote-tags-and-members-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.75rem;
+            min-height: 1.5rem;
+        }
+        
+        .subnote-tags-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            align-items: center;
+        }
+        
+        .subnote-team-members-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        
+        /* Ensure badge sizing is consistent */
+        .subnote-tags-section .tag-badge,
+        .subnote-team-members-section .tag-badge {
+            display: inline-block;
+            white-space: nowrap;
+            height: fit-content;
         }
         
         /* Tag dropdown styling */
@@ -636,6 +742,24 @@
                         <small class="form-text text-muted">Click the input field to search and select tags.</small>
                     </div>
 
+                    <div class="form-group">
+                        <label for="teamMemberSearch">Assignee</label>
+                        <div class="tag-search-container">
+                            <input type="text" id="teamMemberSearch" class="form-control" placeholder="Click to search and select assignee..." autocomplete="off">
+                            <div id="teamMemberList" class="tag-list border rounded p-2" style="max-height: 200px; overflow-y: auto; display: none;">
+                                <div th:each="tm : ${allTeamMembers}" class="tag-item form-check" th:attr="data-team-member-name=${tm.name}">
+                                    <input class="form-check-input team-member-checkbox" type="checkbox" th:id="'tm_' + ${tm.id}" th:value="${tm.id}" name="teamMemberIds">
+                                    <label class="form-check-label" th:for="'tm_' + ${tm.id}" th:text="${tm.name}"></label>
+                                </div>
+                            </div>
+                            <div id="selectedTeamMembers" class="mt-2" style="display: none;">
+                                <small class="text-muted">Selected assignees:</small>
+                                <div id="selectedTeamMembersContainer"></div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Click the input field to search and select team members. You can assign to multiple people.</small>
+                    </div>
+
                     <button type="submit" class="btn btn-primary">Save Note</button>
                 </form>
             </div>
@@ -643,6 +767,7 @@
     </div>
 
     <script type="application/json" id="tagsData" th:utext="${tagsJson}">[]</script>
+    <script type="application/json" id="teamMembersData" th:utext="${teamMembersJson}">[]</script>
 
     <!-- SubNote Tags Modal -->
     <div class="modal fade subnote-tag-modal" id="subNoteTagsModal" tabindex="-1" role="dialog" aria-labelledby="subNoteTagsModalLabel" aria-hidden="true">
@@ -674,6 +799,36 @@
         </div>
     </div>
 
+    <!-- SubNote Team Members Modal -->
+    <div class="modal fade subnote-team-member-modal" id="subNoteTeamMembersModal" tabindex="-1" role="dialog" aria-labelledby="subNoteTeamMembersModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="subNoteTeamMembersModalLabel">Assign Team Members to SubNote</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="subnote-team-member-search-container">
+                        <input type="text" id="subNoteTeamMemberSearch" class="form-control" placeholder="Search team members..." autocomplete="off">
+                        <div id="subNoteTeamMemberList" class="subnote-team-member-list border rounded p-2 mt-2">
+                            <!-- Team member checkboxes will be rendered here -->
+                        </div>
+                    </div>
+                    <div id="modalSelectedTeamMembers" class="mt-3" style="display: none;">
+                        <small class="text-muted">Selected assignees:</small>
+                        <div id="modalSelectedTeamMembersContainer"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="applySubNoteTeamMembers()">Apply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
@@ -686,6 +841,7 @@
         let hasUnsavedChanges = false;
         let nameInput = null;
         let allTags = [];
+        let allTeamMembers = [];
         
         // Load tags from JSON
         try {
@@ -713,6 +869,17 @@
         console.log('Final allTags array:', allTags);
         console.log('Is allTags an array?', Array.isArray(allTags));
         console.log('allTags.length:', allTags.length);
+        
+        // Load team members from JSON
+        try {
+            const teamMembersDataElement = document.getElementById('teamMembersData');
+            if (teamMembersDataElement && teamMembersDataElement.textContent && teamMembersDataElement.textContent.trim().length > 0) {
+                allTeamMembers = JSON.parse(teamMembersDataElement.textContent);
+                console.log('Loaded team members:', allTeamMembers);
+            }
+        } catch (e) {
+            console.error('Error parsing team members data:', e);
+        }
         
         // Build available buckets options for dropdown
         let allBucketsOptions = '';
@@ -963,13 +1130,22 @@
                             🏷️ Tags
                         </button>
                         
+                        <!-- Team Members button to open modal -->
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-subnote-team-members" 
+                                onclick="openSubNoteTeamMembersModal(${index})" title="Assign team members">
+                            👥 Assignee
+                        </button>
+                        
                         <button type="button" class="toggle-description-btn" onclick="toggleDescription(${index})" id="toggleBtn-${index}">
                             ${hasDescription ? '▼ Description' : '+ Description'}
                         </button>
                     </div>
                     
-                    <!-- Selected Tags Display -->
-                    <div class="selected-tags-display" id="selectedTags-${index}"></div>
+                    <!-- Combined Tags and Team Members Display -->
+                    <div class="subnote-tags-and-members-display" id="tagsAndMembers-${index}" style="display: none;">
+                        <div class="subnote-tags-section" id="selectedTags-${index}"></div>
+                        <div class="subnote-team-members-section" id="selectedTeamMembers-${index}"></div>
+                    </div>
                     
                     <div class="sub-note-description-section ${hasDescription ? 'show' : ''}" id="descSection-${index}">
                         <div id="subNoteDesc-editor-${index}" style="min-height: 100px; max-height: 300px; margin-top: 0.5rem;"></div>
@@ -1015,9 +1191,14 @@
                 });
             }
             
-            // Store empty tag array for new subnotes
+            // Store empty tag array for new subnotes - convert index to string to match getAttribute
             if (!window.subNoteTagsData) window.subNoteTagsData = {};
-            if (!window.subNoteTagsData[index]) window.subNoteTagsData[index] = [];
+            const indexStr = String(index);
+            if (!window.subNoteTagsData[indexStr]) window.subNoteTagsData[indexStr] = [];
+            
+            // Store empty team members array for new subnotes
+            if (!window.subNoteTeamMembersData) window.subNoteTeamMembersData = {};
+            if (!window.subNoteTeamMembersData[indexStr]) window.subNoteTeamMembersData[indexStr] = [];
             
             updateBucketCounts();
             checkForChanges();
@@ -1046,13 +1227,13 @@
         
         // Open tags modal for a subnote
         function openSubNoteTagsModal(index) {
-            currentSubNoteIndex = index;
+            currentSubNoteIndex = String(index);  // Convert to string for consistency
             
             // Initialize subNoteTagsData if not exists
             if (!window.subNoteTagsData) window.subNoteTagsData = {};
-            if (!window.subNoteTagsData[index]) window.subNoteTagsData[index] = [];
+            if (!window.subNoteTagsData[currentSubNoteIndex]) window.subNoteTagsData[currentSubNoteIndex] = [];
             
-            const currentSelectedTags = window.subNoteTagsData[index];
+            const currentSelectedTags = window.subNoteTagsData[currentSubNoteIndex];
             
             // Populate tag list in modal
             const tagList = document.getElementById('subNoteTagList');
@@ -1166,11 +1347,17 @@
             if (!window.subNoteTagsData) window.subNoteTagsData = {};
             const selectedTagIds = window.subNoteTagsData[index] || [];
             const selectedTagsDisplay = document.getElementById(`selectedTags-${index}`);
+            const combinedContainer = document.getElementById(`tagsAndMembers-${index}`);
             
             if (!selectedTagsDisplay) return;
             
             if (selectedTagIds.length === 0) {
                 selectedTagsDisplay.innerHTML = '';
+                // Check if team members exist to decide whether to show container
+                const hasTeamMembers = window.subNoteTeamMembersData && window.subNoteTeamMembersData[index] && window.subNoteTeamMembersData[index].length > 0;
+                if (combinedContainer) {
+                    combinedContainer.style.display = hasTeamMembers ? 'flex' : 'none';
+                }
                 return;
             }
             
@@ -1183,6 +1370,158 @@
             selectedTagsDisplay.innerHTML = selectedTags.map(tagName => 
                 `<span class="tag-badge">${tagName}</span>`
             ).join('');
+            
+            // Show the combined container
+            if (combinedContainer) {
+                combinedContainer.style.display = 'flex';
+            }
+            
+            checkForChanges();
+        }
+        
+        // Variables for team members modal
+        let currentSubNoteIndexForTeamMembers = null;
+        
+        // Open team members modal for a subnote
+        function openSubNoteTeamMembersModal(index) {
+            currentSubNoteIndexForTeamMembers = String(index);  // Convert to string for consistency
+            
+            // Initialize subNoteTeamMembersData if not exists
+            if (!window.subNoteTeamMembersData) window.subNoteTeamMembersData = {};
+            if (!window.subNoteTeamMembersData[currentSubNoteIndexForTeamMembers]) window.subNoteTeamMembersData[currentSubNoteIndexForTeamMembers] = [];
+            
+            const currentSelectedTeamMembers = window.subNoteTeamMembersData[currentSubNoteIndexForTeamMembers];
+            
+            // Populate team member list in modal
+            const teamMemberList = document.getElementById('subNoteTeamMemberList');
+            teamMemberList.innerHTML = '';
+            
+            allTeamMembers.forEach(tm => {
+                const isChecked = currentSelectedTeamMembers.includes(tm.id);
+                const tmItemHtml = `
+                    <div class="subnote-team-member-item ${isChecked ? 'selected' : ''}" data-team-member-name="${tm.name}" onclick="toggleSubNoteTeamMember(${tm.id})">
+                        <input class="form-check-input subnote-team-member-checkbox" type="checkbox" 
+                               id="subnoteTm_${tm.id}" 
+                               value="${tm.id}" 
+                               ${isChecked ? 'checked' : ''}>
+                        <label class="form-check-label" for="subnoteTm_${tm.id}">${tm.name}</label>
+                        <span class="tag-check">✓</span>
+                    </div>
+                `;
+                teamMemberList.insertAdjacentHTML('beforeend', tmItemHtml);
+            });
+            
+            // Add search functionality
+            const searchInput = document.getElementById('subNoteTeamMemberSearch');
+            searchInput.value = '';
+            searchInput.oninput = function() {
+                const searchTerm = this.value.toLowerCase();
+                document.querySelectorAll('.subnote-team-member-item').forEach(item => {
+                    const name = item.getAttribute('data-team-member-name').toLowerCase();
+                    item.style.display = name.includes(searchTerm) ? '' : 'none';
+                });
+            };
+            
+            // Show the modal
+            $('#subNoteTeamMembersModal').modal('show');
+        }
+        
+        // Toggle team member checkbox in subnote modal
+        function toggleSubNoteTeamMember(teamMemberId) {
+            const checkbox = document.getElementById(`subnoteTm_${teamMemberId}`);
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+                updateSubNoteModalSelectedTeamMembers();
+            }
+        }
+        
+        // Update selected team members display in modal
+        function updateSubNoteModalSelectedTeamMembers() {
+            const checkedBoxes = document.querySelectorAll('.subnote-team-member-checkbox:checked');
+            const selectedSection = document.getElementById('modalSelectedTeamMembers');
+            const container = document.getElementById('modalSelectedTeamMembersContainer');
+            
+            if (checkedBoxes.length === 0) {
+                selectedSection.style.display = 'none';
+                return;
+            }
+            
+            selectedSection.style.display = 'block';
+            container.innerHTML = '';
+            
+            checkedBoxes.forEach(checkbox => {
+                const label = document.querySelector(`label[for="${checkbox.id}"]`);
+                const tmName = label ? label.textContent : '';
+                const badge = document.createElement('span');
+                badge.className = 'tag-badge';
+                badge.innerHTML = `${tmName} <span class="tag-remove" onclick="removeSubNoteModalTeamMember('${checkbox.id}')">&times;</span>`;
+                container.appendChild(badge);
+            });
+        }
+        
+        // Remove team member from modal
+        function removeSubNoteModalTeamMember(checkboxId) {
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                checkbox.checked = false;
+                updateSubNoteModalSelectedTeamMembers();
+            }
+        }
+        
+        // Apply selected team members to subnote
+        function applySubNoteTeamMembers() {
+            if (currentSubNoteIndexForTeamMembers === null) return;
+            
+            const checkedBoxes = document.querySelectorAll('.subnote-team-member-checkbox:checked');
+            const selectedTeamMemberIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+            
+            // Store selected team members
+            if (!window.subNoteTeamMembersData) window.subNoteTeamMembersData = {};
+            window.subNoteTeamMembersData[currentSubNoteIndexForTeamMembers] = selectedTeamMemberIds;
+            
+            // Update team members display for the subnote
+            updateSubNoteTeamMembersDisplay(currentSubNoteIndexForTeamMembers);
+            
+            // Close modal
+            $('#subNoteTeamMembersModal').modal('hide');
+            
+            // Mark as changed
+            checkForChanges();
+        }
+        
+        // Update team members badges display
+        function updateSubNoteTeamMembersDisplay(index) {
+            if (!window.subNoteTeamMembersData) window.subNoteTeamMembersData = {};
+            const selectedTeamMemberIds = window.subNoteTeamMembersData[index] || [];
+            const selectedTeamMembersDisplay = document.getElementById(`selectedTeamMembers-${index}`);
+            const combinedContainer = document.getElementById(`tagsAndMembers-${index}`);
+            
+            if (!selectedTeamMembersDisplay) return;
+            
+            if (selectedTeamMemberIds.length === 0) {
+                selectedTeamMembersDisplay.innerHTML = '';
+                // Check if tags exist to decide whether to show container
+                const hasTags = window.subNoteTagsData && window.subNoteTagsData[index] && window.subNoteTagsData[index].length > 0;
+                if (combinedContainer) {
+                    combinedContainer.style.display = hasTags ? 'flex' : 'none';
+                }
+                return;
+            }
+            
+            // Find team member names from allTeamMembers
+            const selectedTeamMembers = selectedTeamMemberIds.map(tmId => {
+                const tm = allTeamMembers.find(t => t.id === tmId);
+                return tm ? tm.name : null;
+            }).filter(name => name !== null);
+            
+            selectedTeamMembersDisplay.innerHTML = selectedTeamMembers.map(tmName => 
+                `<span class="assignee-badge">${tmName}</span>`
+            ).join('');
+            
+            // Show the combined container
+            if (combinedContainer) {
+                combinedContainer.style.display = 'flex';
+            }
             
             checkForChanges();
         }
@@ -1283,6 +1622,89 @@
             });
         }
 
+        // Team member search functionality  (similar to tags)
+        function initializeTeamMemberSearch() {
+            const tmSearchInput = document.getElementById('teamMemberSearch');
+            const tmList = document.getElementById('teamMemberList');
+            const tmItems = document.querySelectorAll('[data-team-member-name]');
+            const tmCheckboxes = document.querySelectorAll('.team-member-checkbox');
+            const selectedTMDiv = document.getElementById('selectedTeamMembers');
+            const selectedTMContainer = document.getElementById('selectedTeamMembersContainer');
+            
+            // Show dropdown when input is focused
+            tmSearchInput.addEventListener('focus', function() {
+                tmList.classList.add('show');
+                tmList.style.display = 'block';
+            });
+            
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('[id="teamMemberSearch"]')) {
+                    tmList.classList.remove('show');
+                    tmList.style.display = 'none';
+                }
+            });
+            
+            // Filter team members based on search input
+            tmSearchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                
+                tmItems.forEach(item => {
+                    const tmName = item.getAttribute('data-team-member-name').toLowerCase();
+                    if (tmName.includes(searchTerm)) {
+                        item.classList.remove('hidden');
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+            });
+            
+            // Update selected team members display
+            function updateSelectedTeamMembers() {
+                const selectedCheckboxes = document.querySelectorAll('.team-member-checkbox:checked');
+                selectedTMContainer.innerHTML = '';
+                
+                if (selectedCheckboxes.length > 0) {
+                    selectedTMDiv.style.display = 'block';
+                    selectedCheckboxes.forEach(checkbox => {
+                        const label = document.querySelector(`label[for="${checkbox.id}"]`);
+                        const tmName = label.textContent;
+                        
+                        const tmElement = document.createElement('div');
+                        tmElement.className = 'selected-tag';
+                        tmElement.innerHTML = `
+                            ${tmName}
+                            <span class="remove" data-tm-id="${checkbox.value}">&times;</span>
+                        `;
+                        selectedTMContainer.appendChild(tmElement);
+                    });
+                } else {
+                    selectedTMDiv.style.display = 'none';
+                }
+            }
+            
+            // Handle team member selection
+            tmCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    updateSelectedTeamMembers();
+                    checkForChanges();
+                });
+            });
+            
+            // Handle team member removal from selected
+            selectedTMContainer.addEventListener('click', function(event) {
+                if (event.target.classList.contains('remove')) {
+                    const tmId = event.target.getAttribute('data-tm-id');
+                    const checkbox = document.querySelector(`.team-member-checkbox[value="${tmId}"]`);
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        updateSelectedTeamMembers();
+                        checkForChanges();
+                    }
+                }
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Re-initialize buckets after DOM is ready
             initializeBuckets();
@@ -1336,6 +1758,9 @@
             // Initialize tag search functionality
             initializeTagSearch();
             
+            // Initialize team members search functionality
+            initializeTeamMemberSearch();
+            
             if (nameInput) {
                 nameInput.addEventListener('input', checkForChanges);
             }
@@ -1365,16 +1790,34 @@
             
             // Clear the unsaved changes flag when form is submitted
             form.addEventListener('submit', function() {
+                // First, remove any existing hidden tag/team member inputs to avoid duplicates
+                document.querySelectorAll('input[name="subNoteTagIds"], input[name="subNoteTeamMemberIds"]').forEach(el => {
+                    el.remove();
+                });
+                
                 // Collect selected tags from subNoteTagsData for all subnotes
-                document.querySelectorAll('.sub-note-item').forEach(subNote => {
+                document.querySelectorAll('.sub-note-item').forEach((subNote, position) => {
                     const index = subNote.getAttribute('data-index');
+                    console.log(`Submitting subnote at position ${position}, with data-index ${index}`);
+                    
                     const selectedTagIds = (window.subNoteTagsData && window.subNoteTagsData[index]) ? window.subNoteTagsData[index] : [];
+                    console.log(`Subnote ${index} tags:`, selectedTagIds);
                     
                     const hiddenInput = document.createElement('input');
                     hiddenInput.type = 'hidden';
                     hiddenInput.name = 'subNoteTagIds';
                     hiddenInput.value = selectedTagIds.join(',');
-                    subNote.appendChild(hiddenInput);
+                    form.appendChild(hiddenInput);
+                    
+                    // Collect selected team members from subNoteTeamMembersData for all subnotes
+                    const selectedTeamMemberIds = (window.subNoteTeamMembersData && window.subNoteTeamMembersData[index]) ? window.subNoteTeamMembersData[index] : [];
+                    console.log(`Subnote ${index} team members:`, selectedTeamMemberIds);
+                    
+                    const hiddenTeamMemberInput = document.createElement('input');
+                    hiddenTeamMemberInput.type = 'hidden';
+                    hiddenTeamMemberInput.name = 'subNoteTeamMemberIds';
+                    hiddenTeamMemberInput.value = selectedTeamMemberIds.join(',');
+                    form.appendChild(hiddenTeamMemberInput);
                 });
                 
                 hasUnsavedChanges = false;
