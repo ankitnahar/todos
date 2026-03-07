@@ -1242,7 +1242,7 @@
             allTags.forEach(tag => {
                 const isChecked = currentSelectedTags.includes(tag.id);
                 const tagItemHtml = `
-                    <div class="subnote-tag-item ${isChecked ? 'selected' : ''}" data-tag-name="${tag.name}" onclick="toggleSubNoteTag(${tag.id})">
+                    <div class="subnote-tag-item ${isChecked ? 'selected' : ''}" data-tag-name="${tag.name}" onclick="toggleSubNoteTag(${tag.id}, event)">
                         <input class="form-check-input subnote-tag-checkbox" type="checkbox" 
                                id="subnoteTag_${tag.id}" 
                                value="${tag.id}" 
@@ -1273,7 +1273,25 @@
         }
         
         // Toggle tag selection
-        function toggleSubNoteTag(tagId) {
+        function toggleSubNoteTag(tagId, event) {
+            // If the click was directly on the checkbox or label, don't toggle again
+            // because the browser already handled it
+            if (event && (event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL')) {
+                // Just update the UI to reflect the current state
+                const checkbox = document.getElementById(`subnoteTag_${tagId}`);
+                const tagItem = checkbox.closest('.subnote-tag-item');
+                
+                if (checkbox.checked) {
+                    tagItem.classList.add('selected');
+                } else {
+                    tagItem.classList.remove('selected');
+                }
+                
+                updateModalSelectedTags();
+                return;
+            }
+            
+            // If clicked on the div itself, toggle manually
             const checkbox = document.getElementById(`subnoteTag_${tagId}`);
             const tagItem = checkbox.closest('.subnote-tag-item');
             
@@ -1399,7 +1417,7 @@
             allTeamMembers.forEach(tm => {
                 const isChecked = currentSelectedTeamMembers.includes(tm.id);
                 const tmItemHtml = `
-                    <div class="subnote-team-member-item ${isChecked ? 'selected' : ''}" data-team-member-name="${tm.name}" onclick="toggleSubNoteTeamMember(${tm.id})">
+                    <div class="subnote-team-member-item ${isChecked ? 'selected' : ''}" data-team-member-name="${tm.name}" onclick="toggleSubNoteTeamMember(${tm.id}, event)">
                         <input class="form-check-input subnote-team-member-checkbox" type="checkbox" 
                                id="subnoteTm_${tm.id}" 
                                value="${tm.id}" 
@@ -1427,10 +1445,35 @@
         }
         
         // Toggle team member checkbox in subnote modal
-        function toggleSubNoteTeamMember(teamMemberId) {
+        function toggleSubNoteTeamMember(teamMemberId, event) {
+            // If the click was directly on the checkbox or label, don't toggle again
+            if (event && (event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL')) {
+                // Just update the UI to reflect the current state
+                const checkbox = document.getElementById(`subnoteTm_${teamMemberId}`);
+                const tmItem = checkbox.closest('.subnote-team-member-item');
+                
+                if (checkbox.checked) {
+                    tmItem.classList.add('selected');
+                } else {
+                    tmItem.classList.remove('selected');
+                }
+                
+                updateSubNoteModalSelectedTeamMembers();
+                return;
+            }
+            
+            // If clicked on the div itself, toggle manually
             const checkbox = document.getElementById(`subnoteTm_${teamMemberId}`);
             if (checkbox) {
                 checkbox.checked = !checkbox.checked;
+                
+                const tmItem = checkbox.closest('.subnote-team-member-item');
+                if (checkbox.checked) {
+                    tmItem.classList.add('selected');
+                } else {
+                    tmItem.classList.remove('selected');
+                }
+                
                 updateSubNoteModalSelectedTeamMembers();
             }
         }
@@ -1806,7 +1849,7 @@
                     const hiddenInput = document.createElement('input');
                     hiddenInput.type = 'hidden';
                     hiddenInput.name = 'subNoteTagIds';
-                    hiddenInput.value = selectedTagIds.join(',');
+                    hiddenInput.value = selectedTagIds.join('|');  // Use pipe instead of comma
                     form.appendChild(hiddenInput);
                     
                     // Collect selected team members from subNoteTeamMembersData for all subnotes
@@ -1816,7 +1859,7 @@
                     const hiddenTeamMemberInput = document.createElement('input');
                     hiddenTeamMemberInput.type = 'hidden';
                     hiddenTeamMemberInput.name = 'subNoteTeamMemberIds';
-                    hiddenTeamMemberInput.value = selectedTeamMemberIds.join(',');
+                    hiddenTeamMemberInput.value = selectedTeamMemberIds.join('|');  // Use pipe instead of comma
                     form.appendChild(hiddenTeamMemberInput);
                 });
                 

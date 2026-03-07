@@ -47,8 +47,6 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
 
     @Query("SELECT DISTINCT n FROM Note n " +
             "LEFT JOIN FETCH n.subNotes s " +
-            "LEFT JOIN FETCH s.tags " +
-            "LEFT JOIN FETCH s.teamMembers " +
             "WHERE n.id = :id")
     Note findByIdWithSubNotes(@Param("id") Long id);
 

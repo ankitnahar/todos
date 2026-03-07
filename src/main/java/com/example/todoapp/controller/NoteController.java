@@ -292,6 +292,17 @@ public class NoteController {
         note.setNested(nested != null && nested);
         List<String> subNoteHeaders = formParams.get("subNoteHeaders");
         List<String> subNoteDescriptions = formParams.get("subNoteDescriptions");
+        
+        // DEBUG: Print what we received
+        System.out.println("========== ADD NOTE DEBUG ==========");
+        System.out.println("subNoteHeaders size: " + (subNoteHeaders != null ? subNoteHeaders.size() : 0));
+        System.out.println("subNoteHeaders: " + subNoteHeaders);
+        System.out.println("subNoteTagIds size: " + (subNoteTagIds != null ? subNoteTagIds.size() : 0));
+        System.out.println("subNoteTagIds: " + subNoteTagIds);
+        System.out.println("subNoteTeamMemberIds size: " + (subNoteTeamMemberIds != null ? subNoteTeamMemberIds.size() : 0));
+        System.out.println("subNoteTeamMemberIds: " + subNoteTeamMemberIds);
+        System.out.println("====================================");
+        
         if (note.isNested() && subNoteHeaders != null && !subNoteHeaders.isEmpty()) {
             for (int i = 0; i < subNoteHeaders.size(); i++) {
                 if (subNoteHeaders.get(i) != null && !subNoteHeaders.get(i).trim().isEmpty()) {
@@ -310,7 +321,7 @@ public class NoteController {
                     
                     // Handle subnote tags
                     if (subNoteTagIds != null && i < subNoteTagIds.size() && subNoteTagIds.get(i) != null && !subNoteTagIds.get(i).isEmpty()) {
-                        String[] tagIdArray = subNoteTagIds.get(i).split(",");
+                        String[] tagIdArray = subNoteTagIds.get(i).split("\\|");  // Split by pipe instead of comma
                         Set<Tag> subNoteTags = new HashSet<>();
                         System.out.println("[NOTE CONTROLLER CREATE] SubNote " + i + " tags: " + subNoteTagIds.get(i));
                         for (String tagIdStr : tagIdArray) {
@@ -332,7 +343,7 @@ public class NoteController {
                     
                     // Handle subnote team members
                     if (subNoteTeamMemberIds != null && i < subNoteTeamMemberIds.size() && subNoteTeamMemberIds.get(i) != null && !subNoteTeamMemberIds.get(i).isEmpty()) {
-                        String[] tmIdArray = subNoteTeamMemberIds.get(i).split(",");
+                        String[] tmIdArray = subNoteTeamMemberIds.get(i).split("\\|");  // Split by pipe instead of comma
                         Set<TeamMember> subNoteTeamMembers = new HashSet<>();
                         System.out.println("[NOTE CONTROLLER CREATE] SubNote " + i + " team members: " + subNoteTeamMemberIds.get(i));
                         for (String tmIdStr : tmIdArray) {
@@ -353,8 +364,15 @@ public class NoteController {
                     }
                     
                     note.addSubNote(subNote);
+                    System.out.println("[NOTE CONTROLLER CREATE] Added SubNote to note, total subnotes in note: " + note.getSubNotes().size());
                 }
             }
+        }
+        
+        System.out.println("[NOTE CONTROLLER CREATE] About to save note with " + note.getSubNotes().size() + " subnotes");
+        for (int i = 0; i < note.getSubNotes().size(); i++) {
+            SubNote sn = note.getSubNotes().get(i);
+            System.out.println("[NOTE CONTROLLER CREATE]   SubNote " + i + ": header='" + sn.getHeader() + "', tags=" + sn.getTags().size() + ", teamMembers=" + sn.getTeamMembers().size());
         }
         
         noteService.save(note);
@@ -629,143 +647,137 @@ public class NoteController {
         System.out.println("[NOTE CONTROLLER UPDATE] subNoteTeamMemberIds size: " + (subNoteTeamMemberIds != null ? subNoteTeamMemberIds.size() : 0));
         
         if (note.isNested() && subNoteHeaders != null && !subNoteHeaders.isEmpty()) {
-            // Create a map of existing subnotes by their ID for easy lookup
+            // ===== REWRITTEN LOGIC FOR CLARITY =====
+            // Step 1: Build a map of existing subnotes by ID for quick lookup
             Map<Long, SubNote> existingSubNotesMap = new HashMap<>();
             if (existingNote.getSubNotes() != null) {
                 for (SubNote existingSubNote : existingNote.getSubNotes()) {
                     existingSubNotesMap.put(existingSubNote.getId(), existingSubNote);
                 }
             }
+            System.out.println("[SUBNOTE LOGIC] Found " + existingSubNotesMap.size() + " existing subnotes in database");
             
+            // Step 2: Track which subnotes are being submitted (will be kept)
             List<Long> submittedSubNoteIds = new ArrayList<>();
             
+            // Step 3: Iterate through form-submitted subnote data (only non-empty headers)
+            System.out.println("[SUBNOTE LOGIC] Processing " + subNoteHeaders.size() + " form-submitted headers");
             for (int i = 0; i < subNoteHeaders.size(); i++) {
-                if (subNoteHeaders.get(i) != null && !subNoteHeaders.get(i).trim().isEmpty()) {
-                    SubNote subNote;
-                    Long subNoteId = null;
+                String header = subNoteHeaders.get(i);
+                
+                // Skip empty headers - these represent deleted subnotes
+                if (header == null || header.trim().isEmpty()) {
+                    System.out.println("[SUBNOTE LOGIC] Skipping empty header at index " + i);
+                    continue;
+                }
+                
+                SubNote subNote;
+                Long subNoteId = null;
+                boolean isNewSubNote = false;
+                
+                // Check if this is an update to existing or a new subnote
+                if (subNoteIds != null && i < subNoteIds.size() && subNoteIds.get(i) != null && subNoteIds.get(i) > 0) {
+                    // Existing subnote - get its ID
+                    subNoteId = subNoteIds.get(i);
+                    submittedSubNoteIds.add(subNoteId);
                     
-                    // Check if this is an existing subnote (has an ID) or a new one
-                    if (subNoteIds != null && i < subNoteIds.size() && subNoteIds.get(i) != null) {
-                        subNoteId = subNoteIds.get(i);
-                        submittedSubNoteIds.add(subNoteId);
-                        
-                        // Check if this subnote already exists in the current note
-                        if (existingSubNotesMap.containsKey(subNoteId)) {
-                            // REUSE the existing subnote object (don't create a new one)
-                            subNote = existingSubNotesMap.get(subNoteId);
-                            System.out.println("[NOTE CONTROLLER UPDATE] Reusing existing SubNote with ID: " + subNoteId);
-                        } else {
-                            // This shouldn't happen, but if it does, fetch it
-                            Optional<SubNote> fetchedOpt = noteService.getSubNoteById(subNoteId);
-                            if (fetchedOpt.isPresent()) {
-                                subNote = fetchedOpt.get();
-                                System.out.println("[NOTE CONTROLLER UPDATE] Fetched SubNote with ID: " + subNoteId);
-                            } else {
-                                // Create new if not found
-                                subNote = new SubNote();
-                                subNote.setId(subNoteId);
-                            }
-                        }
+                    if (existingSubNotesMap.containsKey(subNoteId)) {
+                        // Reuse existing object from database
+                        subNote = existingSubNotesMap.get(subNoteId);
+                        System.out.println("[SUBNOTE LOGIC] Updating existing SubNote ID: " + subNoteId);
                     } else {
-                        // New subnote
+                        System.err.println("[SUBNOTE LOGIC] WARNING: Submitted SubNote ID " + subNoteId + " not found in database!");
+                        // Create new to recover gracefully
                         subNote = new SubNote();
+                        subNote.setId(subNoteId);
                     }
-                    
-                    subNote.setHeader(subNoteHeaders.get(i));
-                    subNote.setNote(note);  // Ensure note relationship is set
-                    
-                    // Set bucket ID (default to "Today" if not specified)
-                    if (subNoteBucketIds != null && i < subNoteBucketIds.size() && subNoteBucketIds.get(i) != null) {
-                        subNote.setBucketId(subNoteBucketIds.get(i));
-                    } else if (defaultBucket != null) {
-                        subNote.setBucketId(defaultBucket.getId());
-                    }
-                    
-                    // Handle linked note or description
-                    if (subNoteLinkedNoteIds != null && i < subNoteLinkedNoteIds.size() && subNoteLinkedNoteIds.get(i) != null && subNoteLinkedNoteIds.get(i) > 0) {
-                        // This subnote is linked to another note
-                        subNote.setLinkedNoteId(subNoteLinkedNoteIds.get(i));
-                        subNote.setDescription(null); // Clear description when linked
-                    } else {
-                        // This subnote has its own description
-                        subNote.setDescription(subNoteDescriptions != null && i < subNoteDescriptions.size() 
-                            ? subNoteDescriptions.get(i) : "");
-                        subNote.setLinkedNoteId(null); // Clear link when has description
-                    }
-                    
-                    // Handle subnote tags - CLEAR and SET all tags
-                    subNote.getTags().clear();
-                    System.out.println("[NOTE CONTROLLER UPDATE] Processing tags for SubNote index " + i + ", ID: " + subNoteId);
-                    System.out.println("[NOTE CONTROLLER UPDATE]   subNoteTagIds exists: " + (subNoteTagIds != null));
-                    System.out.println("[NOTE CONTROLLER UPDATE]   i < subNoteTagIds.size(): " + (subNoteTagIds != null && i < subNoteTagIds.size()));
-                    if (subNoteTagIds != null && i < subNoteTagIds.size()) {
-                        System.out.println("[NOTE CONTROLLER UPDATE]   subNoteTagIds.get(" + i + "): '" + subNoteTagIds.get(i) + "'");
-                    }
-                    
-                    if (subNoteTagIds != null && i < subNoteTagIds.size() && subNoteTagIds.get(i) != null && !subNoteTagIds.get(i).isEmpty()) {
-                        String[] tagIdArray = subNoteTagIds.get(i).split("\\|");  // Split by | instead of comma
-                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " tags string: " + subNoteTagIds.get(i) + " → split into " + tagIdArray.length + " tags");
-                        for (String tagIdStr : tagIdArray) {
-                            try {
-                                String trimmedId = tagIdStr.trim();
-                                if (!trimmedId.isEmpty()) {
-                                    Long tagId = Long.parseLong(trimmedId);
-                                    tagService.findById(tagId).ifPresent(tag -> {
-                                        subNote.getTags().add(tag);
-                                        System.out.println("[NOTE CONTROLLER UPDATE] Added tag: " + tag.getId() + " - " + tag.getName());
-                                    });
-                                }
-                            } catch (NumberFormatException e) {
-                                System.err.println("[NOTE CONTROLLER UPDATE] Failed to parse tag ID: " + tagIdStr);
+                } else {
+                    // New subnote (no existing ID)
+                    subNote = new SubNote();
+                    isNewSubNote = true;
+                    System.out.println("[SUBNOTE LOGIC] Creating new SubNote from form");
+                }
+                
+                // Update common fields
+                subNote.setHeader(header);
+                subNote.setNote(note);
+                subNote.setDisplayOrder(i);
+                
+                // Set bucket
+                if (subNoteBucketIds != null && i < subNoteBucketIds.size() && subNoteBucketIds.get(i) != null) {
+                    subNote.setBucketId(subNoteBucketIds.get(i));
+                } else if (defaultBucket != null) {
+                    subNote.setBucketId(defaultBucket.getId());
+                }
+                
+                // Handle linked note vs description
+                if (subNoteLinkedNoteIds != null && i < subNoteLinkedNoteIds.size() && subNoteLinkedNoteIds.get(i) != null && subNoteLinkedNoteIds.get(i) > 0) {
+                    subNote.setLinkedNoteId(subNoteLinkedNoteIds.get(i));
+                    subNote.setDescription(null);
+                } else {
+                    subNote.setLinkedNoteId(null);
+                    subNote.setDescription(subNoteDescriptions != null && i < subNoteDescriptions.size() ? subNoteDescriptions.get(i) : "");
+                }
+                
+                // Handle tags - CLEAR FIRST, then SET
+                subNote.getTags().clear();
+                if (subNoteTagIds != null && i < subNoteTagIds.size() && subNoteTagIds.get(i) != null && !subNoteTagIds.get(i).isEmpty()) {
+                    String[] tagIdArray = subNoteTagIds.get(i).split("\\|");
+                    System.out.println("[SUBNOTE LOGIC] SubNote " + (subNoteId != null ? subNoteId : "NEW") + " has " + tagIdArray.length + " tags");
+                    for (String tagIdStr : tagIdArray) {
+                        try {
+                            String trimmedId = tagIdStr.trim();
+                            if (!trimmedId.isEmpty()) {
+                                Long tagId = Long.parseLong(trimmedId);
+                                tagService.findById(tagId).ifPresent(tag -> subNote.getTags().add(tag));
                             }
+                        } catch (NumberFormatException e) {
+                            System.err.println("[SUBNOTE LOGIC] Failed to parse tag ID: " + tagIdStr);
                         }
-                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " final tag count: " + subNote.getTags().size());
-                    } else {
-                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " has no tags (condition failed), final tag count: 0");
                     }
-                    
-                    // Handle subnote team members - CLEAR and SET all team members
-                    subNote.getTeamMembers().clear();
-                    System.out.println("[NOTE CONTROLLER UPDATE] Processing team members for SubNote index " + i + ", ID: " + subNoteId);
-                    System.out.println("[NOTE CONTROLLER UPDATE]   subNoteTeamMemberIds exists: " + (subNoteTeamMemberIds != null));
-                    System.out.println("[NOTE CONTROLLER UPDATE]   i < subNoteTeamMemberIds.size(): " + (subNoteTeamMemberIds != null && i < subNoteTeamMemberIds.size()));
-                    if (subNoteTeamMemberIds != null && i < subNoteTeamMemberIds.size()) {
-                        System.out.println("[NOTE CONTROLLER UPDATE]   subNoteTeamMemberIds.get(" + i + "): '" + subNoteTeamMemberIds.get(i) + "'");
-                    }
-                    
-                    if (subNoteTeamMemberIds != null && i < subNoteTeamMemberIds.size() && subNoteTeamMemberIds.get(i) != null && !subNoteTeamMemberIds.get(i).isEmpty()) {
-                        String[] tmIdArray = subNoteTeamMemberIds.get(i).split("\\|");  // Split by | instead of comma
-                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " team members string: " + subNoteTeamMemberIds.get(i) + " → split into " + tmIdArray.length + " members");
-                        for (String tmIdStr : tmIdArray) {
-                            try {
-                                String trimmedId = tmIdStr.trim();
-                                if (!trimmedId.isEmpty()) {
-                                    Long tmId = Long.parseLong(trimmedId);
-                                    teamMemberService.findById(tmId).ifPresent(tm -> {
-                                        subNote.getTeamMembers().add(tm);
-                                        System.out.println("[NOTE CONTROLLER UPDATE] Added team member: " + tm.getId() + " - " + tm.getName());
-                                    });
-                                }
-                            } catch (NumberFormatException e) {
-                                System.err.println("[NOTE CONTROLLER UPDATE] Failed to parse team member ID: " + tmIdStr);
+                }
+                
+                // Handle team members - CLEAR FIRST, then SET
+                subNote.getTeamMembers().clear();
+                if (subNoteTeamMemberIds != null && i < subNoteTeamMemberIds.size() && subNoteTeamMemberIds.get(i) != null && !subNoteTeamMemberIds.get(i).isEmpty()) {
+                    String[] tmIdArray = subNoteTeamMemberIds.get(i).split("\\|");
+                    System.out.println("[SUBNOTE LOGIC] SubNote " + (subNoteId != null ? subNoteId : "NEW") + " has " + tmIdArray.length + " team members");
+                    for (String tmIdStr : tmIdArray) {
+                        try {
+                            String trimmedId = tmIdStr.trim();
+                            if (!trimmedId.isEmpty()) {
+                                Long tmId = Long.parseLong(trimmedId);
+                                teamMemberService.findById(tmId).ifPresent(tm -> subNote.getTeamMembers().add(tm));
                             }
+                        } catch (NumberFormatException e) {
+                            System.err.println("[SUBNOTE LOGIC] Failed to parse team member ID: " + tmIdStr);
                         }
-                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " final team member count: " + subNote.getTeamMembers().size());
-                    } else {
-                        System.out.println("[NOTE CONTROLLER UPDATE] SubNote " + i + " has no team members (condition failed), final team member count: 0");
                     }
-                    
-                    subNote.setDisplayOrder(i);
-                    
-                    // Only add to note if it's a new subnote or not already in the list
-                    if (!note.getSubNotes().contains(subNote)) {
-                        note.addSubNote(subNote);
-                    }
+                }
+                
+                // Only add to note.getSubNotes() if it's NEW (for existing ones, we'll add them all at once later)
+                if (isNewSubNote) {
+                    note.addSubNote(subNote);
+                    System.out.println("[SUBNOTE LOGIC] Added NEW SubNote to note");
                 }
             }
             
-            // Remove any subnotes that were deleted (not in submitted list)
-            note.getSubNotes().removeIf(subNote -> subNote.getId() != null && !submittedSubNoteIds.contains(subNote.getId()));
+            // Step 4: Add all existing subnotes that are still being kept
+            // These were already updated in place above
+            if (existingNote.getSubNotes() != null) {
+                for (SubNote existingSubNote : existingNote.getSubNotes()) {
+                    if (submittedSubNoteIds.contains(existingSubNote.getId())) {
+                        // This existing subnote is being kept (was updated above)
+                        if (!note.getSubNotes().contains(existingSubNote)) {
+                            note.addSubNote(existingSubNote);
+                            System.out.println("[SUBNOTE LOGIC] Added back updated SubNote ID: " + existingSubNote.getId());
+                        }
+                    } else {
+                        // This subnote is NOT in submitted list, so it should be deleted (will be removed by cascading)
+                        System.out.println("[SUBNOTE LOGIC] SubNote ID: " + existingSubNote.getId() + " is NOT in submitted list - will be deleted");
+                    }
+                }
+            }
         } else {
             // Not nested, clear all subnotes
             note.getSubNotes().clear();

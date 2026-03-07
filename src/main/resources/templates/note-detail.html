@@ -305,6 +305,42 @@
         .bucket-section {
             margin-bottom: 1rem;
         }
+        
+        /* Combined tags and team members display */
+        .subnote-tags-and-members-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.75rem;
+            min-height: 1.5rem;
+            padding-left: 1rem;
+        }
+        
+        .subnote-tags-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            align-items: center;
+        }
+        
+        .subnote-team-members-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-left: auto;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        
+        /* Ensure badge sizing is consistent */
+        .subnote-tags-section .tag-badge,
+        .subnote-team-members-section .tag-badge {
+            display: inline-block;
+            white-space: nowrap;
+            height: fit-content;
+        }
     </style>
 </head>
 <body>
@@ -423,21 +459,6 @@
                                             <span th:text="${subNote.header}">Sub-note header</span>
                                             <span th:if="${subNote.linkedNoteId != null}" class="linked-note-badge">LINKED</span>
                                         </h6>
-                                        <!-- Subnote tags and assignees -->
-                                        <div th:if="${(subNote.tags != null && !subNote.tags.isEmpty()) || (subNote.teamMembers != null && !subNote.teamMembers.isEmpty())}" style="display: flex; gap: 0.5rem; margin-top: 0.25rem; flex-wrap: wrap;">
-                                            <div th:if="${subNote.tags != null && !subNote.tags.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
-                                                <span th:each="tag : ${subNote.tags}" 
-                                                      class="tag-badge" 
-                                                      style="background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%); color: #1565c0; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #bbdefb; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
-                                                      th:text="${tag.name}">Tag</span>
-                                            </div>
-                                            <div th:if="${subNote.teamMembers != null && !subNote.teamMembers.isEmpty()}" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
-                                                <span th:each="tm : ${subNote.teamMembers}" 
-                                                      class="assignee-badge" 
-                                                      style="background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%); color: #1b5e20; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #81c784; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
-                                                      th:text="${tm.name}">Assignee</span>
-                                            </div>
-                                        </div>
                                         <div class="sub-note-actions">
                                             <!-- Track button -->
                                             <button th:class="${'btn btn-sm track-subnote-btn ' + (subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
@@ -508,6 +529,22 @@
                                 </div>
                             </div>
                             
+                            <!-- Subnote tags and assignees display -->
+                            <div th:if="${(subNote.tags != null && !subNote.tags.isEmpty()) || (subNote.teamMembers != null && !subNote.teamMembers.isEmpty())}" class="subnote-tags-and-members-display">
+                                <div th:if="${subNote.tags != null && !subNote.tags.isEmpty()}" class="subnote-tags-section">
+                                    <span th:each="tag : ${subNote.tags}" 
+                                          class="tag-badge" 
+                                          style="background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%); color: #1565c0; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #bbdefb; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                          th:text="${tag.name}">Tag</span>
+                                </div>
+                                <div th:if="${subNote.teamMembers != null && !subNote.teamMembers.isEmpty()}" class="subnote-team-members-section">
+                                    <span th:each="tm : ${subNote.teamMembers}" 
+                                          class="assignee-badge" 
+                                          style="background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%); color: #1b5e20; padding: 0.15rem 0.45rem; border-radius: 10px; font-size: 0.65rem; font-weight: 600; border: 1px solid #81c784; letter-spacing: 0.3px; white-space: nowrap; display: inline-block; line-height: 1.2;" 
+                                          th:text="${tm.name}">Assignee</span>
+                                </div>
+                            </div>
+                            
                             <!-- Display linked note content -->
                             <div th:if="${subNote.linkedNoteId != null && linkedNotes != null && linkedNotes[subNote.linkedNoteId] != null}"
                                  class="sub-note-description" 
@@ -523,8 +560,6 @@
                                 <div th:id="'subnote-viewer-' + ${subNote.id}" style="min-height: 30px;"></div>
                                 <textarea th:id="'subnote-content-' + ${subNote.id}" style="display: none;" th:text="${subNote.description}"></textarea>
                             </div>
-                            </div>
-                                </div>
                             </fieldset>
                             </th:block>
                         </div>

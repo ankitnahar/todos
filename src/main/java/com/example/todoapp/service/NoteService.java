@@ -40,7 +40,17 @@ public class NoteService {
     }
 
     public Note findByIdWithSubNotes(Long id) {
-        return noteRepository.findByIdWithSubNotes(id);
+        Note note = noteRepository.findByIdWithSubNotes(id);
+        // Eagerly load tags and team members for each subnote to avoid N+1 queries
+        // This is done separately to prevent Cartesian product from multiple JOIN FETCHes
+        if (note != null && note.getSubNotes() != null) {
+            for (SubNote subNote : note.getSubNotes()) {
+                // Access the collections to trigger lazy loading
+                subNote.getTags().size();
+                subNote.getTeamMembers().size();
+            }
+        }
+        return note;
     }
 
     public Optional<SubNote> getSubNoteById(Long id) {
@@ -48,7 +58,10 @@ public class NoteService {
     }
 
     public Note save(Note note) {
-        return noteRepository.save(note);
+        System.out.println("[NOTE SERVICE] Saving note with " + (note.getSubNotes() != null ? note.getSubNotes().size() : 0) + " subnotes");
+        Note savedNote = noteRepository.save(note);
+        System.out.println("[NOTE SERVICE] After save, note has " + (savedNote.getSubNotes() != null ? savedNote.getSubNotes().size() : 0) + " subnotes");
+        return savedNote;
     }
 
     public void deleteById(Long id) {
