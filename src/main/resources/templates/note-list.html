@@ -511,7 +511,10 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 0.75rem;
-            margin-top: 0.25rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.75rem;
+            min-height: 1.5rem;
+            padding-left: 1rem;
         }
         
         .note-assignees {
@@ -972,14 +975,6 @@
                             <span style="opacity: 0.7;">From:</span> <a th:href="@{/notes/{id}(id=${result.parentNoteId})}" th:text="${result.parentNoteName}" style="color: #667eea; text-decoration: none;">Parent Note</a>
                         </div>
                     </div>
-                    <div class="note-tags-and-assignees">
-                        <div class="note-tags" th:if="${not #lists.isEmpty(result.tags)}">
-                            <span th:each="tag : ${result.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
-                        </div>
-                        <div class="note-assignees" th:if="${not #lists.isEmpty(result.teamMembers)}">
-                            <span th:each="tm : ${result.teamMembers}" class="assignee-badge" th:text="${tm.name}">Assignee</span>
-                        </div>
-                    </div>
                 </div>
                 
                 <div class="note-right">
@@ -1081,6 +1076,17 @@
                     </div>
                 </div>
                 </div>
+                
+                <!-- Tags and Assignees Display -->
+                <div th:if="${(not #lists.isEmpty(result.tags)) || (not #lists.isEmpty(result.teamMembers))}" class="note-tags-and-assignees">
+                    <div class="note-tags" th:if="${not #lists.isEmpty(result.tags)}">
+                        <span th:each="tag : ${result.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
+                    </div>
+                    <div class="note-assignees" th:if="${not #lists.isEmpty(result.teamMembers)}">
+                        <span th:each="tm : ${result.teamMembers}" class="assignee-badge" th:text="${tm.name}">Assignee</span>
+                    </div>
+                </div>
+                
                 <!-- Description section (collapsed by default) -->
                 <div th:if="${result.details != null && !#strings.isEmpty(#strings.trim(result.details)) && result.details != '<p><br></p>'}"
                      class="result-description description-hidden"
@@ -1109,14 +1115,6 @@
                         <span class="star-icon"></span>
                     </button>
                     <h3 class="note-title" th:text="${note.name}">Note Title</h3>
-                    <div class="note-tags-and-assignees">
-                        <div class="note-tags" th:if="${not #lists.isEmpty(note.tags)}">
-                            <span th:each="tag : ${note.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
-                        </div>
-                        <div class="note-assignees" th:if="${not #lists.isEmpty(note.teamMembers)}">
-                            <span th:each="tm : ${note.teamMembers}" class="assignee-badge" th:text="${tm.name}">Assignee</span>
-                        </div>
-                    </div>
                 </div>
                 
                 <div class="note-right">
@@ -1164,6 +1162,16 @@
                         </div>
                     </div>
                 </div>
+                </div>
+                
+                <!-- Tags and Assignees Display -->
+                <div th:if="${(not #lists.isEmpty(note.tags)) || (not #lists.isEmpty(note.teamMembers))}" class="note-tags-and-assignees">
+                    <div class="note-tags" th:if="${not #lists.isEmpty(note.tags)}">
+                        <span th:each="tag : ${note.tags}" class="tag-badge" th:text="${tag.name}">Tag</span>
+                    </div>
+                    <div class="note-assignees" th:if="${not #lists.isEmpty(note.teamMembers)}">
+                        <span th:each="tm : ${note.teamMembers}" class="assignee-badge" th:text="${tm.name}">Assignee</span>
+                    </div>
                 </div>
             </div>
         </div>
