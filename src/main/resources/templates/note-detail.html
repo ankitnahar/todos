@@ -364,7 +364,7 @@
                     <a href="/buckets/view" class="btn-header btn-header-warning">📋 Bucket View</a>
                     <a href="/notes/deleted" class="btn-header btn-header-warning">🗑️ Deleted</a>
                     <a th:href="@{/notes/{id}/convert(id=${note.id})}" class="btn-header btn-header-warning"
-                       onclick="return confirm('Convert this note to a task?')">🔄 Convert</a>
+                       onclick="return confirm('Convert this note to a task?')" title="Convert to Task">📝</a>
                     <a th:href="@{/notes/{id}/delete(id=${note.id})}" class="btn-header btn-header-warning"
                        onclick="return confirm('Delete this note?')">🗑️ Delete</a>
                     <a href="/notes" class="btn-header btn-header-warning">← Back to Notes</a>
@@ -461,10 +461,11 @@
                                         </h6>
                                         <div class="sub-note-actions">
                                             <!-- Track button -->
-                                            <button th:class="${'btn btn-sm track-subnote-btn ' + (subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
+                                            <button th:class="${'btn btn-sm btn-outline-secondary track-subnote-btn ' + (subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd') ? 'active' : '')}"
                                                     th:attr="data-subnote-id=${subNote.id}"
                                                     onclick="toggleTrackSubNote(this, event)"
-                                                    title="Track for Today">
+                                                    title="Track for Today"
+                                                    style="padding: 2px 8px; font-size: 0.7rem;">
                                                 <span th:if="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">✅</span>
                                                 <span th:unless="${subNote.lastTrackedDate != null && #temporals.format(subNote.lastTrackedDate, 'yyyy-MM-dd') == #temporals.format(T(java.time.LocalDate).now(), 'yyyy-MM-dd')}">⭕</span>
                                             </button>
@@ -488,18 +489,18 @@
                                                class="btn btn-sm btn-outline-primary" 
                                                onclick="event.stopPropagation()"
                                                title="Edit Sub-Note"
-                                               style="padding: 0.2rem 0.4rem; font-size: 0.8rem;">
+                                               style="padding: 2px 8px; font-size: 0.7rem; margin-left: 0.5rem;">
                                                 ✏️
                                             </a>
 
-                                                <div th:if="${moveTargets != null && !moveTargets.isEmpty()}" class="move-note-container" style="display: inline-block; position: relative; margin-right: 0.5rem;">
+                                                <div th:if="${moveTargets != null && !moveTargets.isEmpty()}" class="move-note-container" style="display: inline-block; position: relative; margin-left: 0.5rem;">
                                                     <!-- Toggle Button -->
                                                     <button type="button"
                                                             class="btn btn-sm btn-outline-secondary"
                                                             onclick="toggleMoveNoteDropdown(this, event)"
                                                             title="Move to another note"
-                                                            style="padding: 0.2rem 0.4rem; font-size: 0.8rem;">
-                                                        📋 Move
+                                                            style="padding: 2px 8px; font-size: 0.7rem;">
+                                                        →
                                                     </button>
                                                     <!-- Dropdown Select (Hidden by default) -->
                                                     <select class="form-select form-select-sm move-note-dropdown"
@@ -517,25 +518,32 @@
                                             <!-- Edit button for linked notes -->
                                             <a th:if="${subNote.linkedNoteId != null}" 
                                                th:href="@{/notes/{id}/edit(id=${subNote.linkedNoteId})}"
-                                               class="btn btn-sm btn-primary" 
+                                               class="btn btn-sm btn-outline-primary" 
                                                onclick="event.stopPropagation()" 
-                                               title="Edit Linked Note">
-                                                ✏️ Edit
+                                               title="Edit Linked Note"
+                                               style="padding: 2px 8px; font-size: 0.7rem; margin-left: 0.5rem;">
+                                                ✏️
                                             </a>
                                             
                                             <form th:action="@{/notes/{noteId}/subnote/convert/{subNoteId}(noteId=${note.id},subNoteId=${subNote.id})}" 
-                                                  method="post" style="display: inline;" 
-                                                  th:onsubmit="'return confirm(\'Convert this sub-note to a main note?\')'">
-                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                  method="post" style="display: inline; margin-left: 0.5rem;" 
+                                                  onsubmit="return confirm('Convert this sub-note to a main note?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" 
                                                 onclick="event.stopPropagation()" 
                                                 title="Convert to Main Note"
-                                                th:if="${subNote.linkedNoteId == null}">
-                                            ⬆️ Convert
+                                                th:if="${subNote.linkedNoteId == null}"
+                                                style="padding: 2px 8px; font-size: 0.7rem;">
+                                            ⬆️
                                         </button>
                                     </form>
-                                    <span class="sub-note-toggle" 
-                                          th:id="'toggle-' + ${subNote.id}"
-                                          th:style="${(subNote.description == null || #strings.isEmpty(#strings.trim(subNote.description)) || subNote.description == '<p><br></p>') && subNote.linkedNoteId == null} ? 'visibility: hidden;' : ''">▼</span>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary sub-note-toggle" 
+                                            th:id="'toggle-' + ${subNote.id}"
+                                            onclick="toggleSubNoteDescription(this.id)"
+                                            title="Toggle description"
+                                            th:style="'padding: 2px 8px; font-size: 0.7rem; margin-left: 0.5rem; cursor: pointer;' + (${(subNote.description == null || #strings.isEmpty(#strings.trim(subNote.description)) || subNote.description == '<p><br></p>') && subNote.linkedNoteId == null} ? 'visibility: hidden;' : '')">
+                                        ▼
+                                    </button>
                                 </div>
                             </div>
                             

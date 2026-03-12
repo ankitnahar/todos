@@ -427,6 +427,31 @@
             border-radius: 3px;
         }
         
+        /* Bucket button styling */
+        .btn-subnote-bucket {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            margin-left: 0.5rem;
+            border-radius: 3px;
+        }
+        
+        /* Bucket button dropdown styling */
+        .bucket-button-dropdown {
+            display: inline-block;
+        }
+        
+        .bucket-option {
+            transition: background-color 0.2s;
+        }
+        
+        .bucket-option:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .bucket-dropdown-menu {
+            border-radius: 0.25rem;
+        }
+        
         .subnote-tag-modal .modal-body {
             max-height: 400px;
             overflow-y: auto;
@@ -530,6 +555,30 @@
         .btn-subnote-team-members {
             font-size: 0.7rem;
             padding: 2px 8px;
+            margin-left: 0.5rem;
+            border-radius: 3px;
+        }
+        
+        /* Save button styling */
+        .btn-subnote-save {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            margin-left: 0.5rem;
+            border-radius: 3px;
+        }
+        
+        /* Toggle description button styling */
+        .btn-toggle-desc {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            margin-left: 0.5rem;
+            border-radius: 3px;
+        }
+        
+        /* Remove sub-note button styling */
+        .btn-remove-sub {
+            font-size: 0.55rem;
+            padding: 1px 6px;
             margin-left: 0.5rem;
             border-radius: 3px;
         }
@@ -744,22 +793,6 @@
             transform: translateY(-1px);
         }
         
-        .sub-note-item .remove-sub-note {
-            cursor: pointer;
-            color: #dc3545;
-            font-size: 1.2rem;
-            line-height: 1;
-            padding: 0 0.25rem;
-            background: transparent;
-            border: none;
-            transition: all 0.2s ease;
-        }
-        
-        .sub-note-item .remove-sub-note:hover {
-            color: #bd2130;
-            transform: scale(1.2);
-        }
-        
         .add-sub-note-btn {
             width: 100%;
             border: 2px dashed #667eea;
@@ -875,31 +908,9 @@
             min-height: 36px;
         }
         
-        .toggle-description-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.2s;
-            padding: 0;
-            font-size: 1.2rem;
-            color: #6c757d;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            line-height: 1;
-        }
-        
-        .toggle-description-btn:hover {
-            color: #495057;
-        }
-        
-        .toggle-description-btn.expanded {
+        /* Toggle button expanded state */
+        .btn-toggle-desc.expanded {
             transform: rotate(180deg);
-        }
-        
-        .toggle-description-btn:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25);
         }
         
         .sub-note-description-section {
@@ -1384,7 +1395,8 @@
                 const addButton = document.createElement('button');
                 addButton.type = 'button';
                 addButton.className = 'btn btn-sm btn-info mt-2';
-                addButton.textContent = '+ Add Sub-Note';
+                addButton.textContent = '+';
+                addButton.title = 'Add Sub-Note';
                 addButton.onclick = () => addSubNote(null, bucket.id);
                 
                 fieldset.appendChild(legend);
@@ -1532,10 +1544,10 @@
             }
             
             const subNoteHtml = `
-                <div class="sub-note-item ${isLinked ? 'linked' : ''}" id="subNote-${index}" data-index="${index}">
+                <div class="sub-note-item ${isLinked ? 'linked' : ''}" id="subNote-${index}" data-index="${index}" data-subnote-id="${subNoteId || ''}" style="position: relative;">
                     ${subNoteId ? `<input type="hidden" name="subNoteIds" value="${subNoteId}">` : '<input type="hidden" name="subNoteIds" value="">'}
                     <input type="hidden" name="subNoteLinkedNoteIds" id="linkedNoteId-${index}" value="${linkedNoteId || ''}">
-                    
+                
                     <!-- Controls row matching view page layout -->
                     <div class="sub-note-controls-row">
                         <!-- Header textarea -->
@@ -1547,28 +1559,48 @@
                         
                         <!-- Actions group (bucket, tags, toggle, delete) -->
                         <div class="sub-note-actions">
-                            <!-- Bucket dropdown -->
-                            <select class="form-select" name="subNoteBucketIds" id="bucketId-${index}">
-                            </select>
+                            <!-- Bucket button dropdown -->
+                            <div class="bucket-button-dropdown" style="position: relative; display: inline-block;">
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-subnote-bucket" 
+                                        id="bucketToggle-${index}" onclick="toggleBucketDropdown(${index})" 
+                                        title="Select bucket">
+                                    🪣
+                                </button>
+                                <div class="bucket-dropdown-menu" 
+                                     id="bucketDropdown-${index}" 
+                                     style="position: fixed; background: white; border: 1px solid #dee2e6; border-radius: 0.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: none; z-index: 10000; min-width: 180px; max-height: 250px; overflow-y: auto;">
+                                </div>
+                                <input type="hidden" name="subNoteBucketIds" id="bucketId-${index}" value="">
+                            </div>
                             
                             <!-- Tags button to open modal -->
                             <button type="button" class="btn btn-sm btn-outline-primary btn-subnote-tags" 
                                     onclick="openSubNoteTagsModal(${index})" title="Manage tags">
-                                🏷️ Tags
+                                🏷️
                             </button>
                             
                             <!-- Team Members button to open modal -->
                             <button type="button" class="btn btn-sm btn-outline-primary btn-subnote-team-members" 
                                     onclick="openSubNoteTeamMembersModal(${index})" title="Assign team members">
-                                👥 Assignee
+                                👥
                             </button>
                             
+                            <!-- Save button for both new and existing subnotes -->
+                            ${!isLinked ? `
+                            <button type="button" class="btn btn-sm btn-outline-success btn-subnote-save" 
+                                    onclick="saveSubNoteOnly(${index})" title="Save this sub-note"
+                                    style="color: #28a745;">
+                                💾
+                            </button>
+                            <span class="subnote-save-status" id="saveStatus-${index}" style="color: green; font-size: 0.75rem; display: none; margin-left: 0.3rem;">✓</span>
+                            ` : ''}
+                            
                             <!-- Description toggle button -->
-                            <button type="button" class="toggle-description-btn" onclick="toggleDescription(${index})" 
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-toggle-desc" onclick="toggleDescription(${index})" 
                                     id="toggleBtn-${index}" title="Toggle description editor" style="${isLinked ? 'display: none;' : ''}">▼</button>
                             
                             <!-- Remove button -->
-                            <span class="remove-sub-note" onclick="removeSubNote(${index})" title="Remove sub-note">&times;</span>
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-sub" onclick="removeSubNote(${index})" title="Remove sub-note">✕</button>
                         </div>
                     </div>
                     
@@ -1603,21 +1635,36 @@
                 subNotesList.insertAdjacentHTML('beforeend', subNoteHtml);
             }
             
-            // Populate bucket dropdown options
-            const bucketSelect = document.getElementById(`bucketId-${index}`);
-            if (bucketSelect) {
-                bucketSelect.innerHTML = allBucketsOptions;
+            // Populate bucket button dropdown options
+            const bucketInput = document.getElementById(`bucketId-${index}`);
+            const bucketDropdown = document.getElementById(`bucketDropdown-${index}`);
+            
+            if (bucketDropdown) {
+                // Parse bucket options from allBucketsOptions HTML
+                const parser = new DOMParser();
+                const htmlDoc = parser.parseFromString(allBucketsOptions, 'text/html');
+                const options = htmlDoc.querySelectorAll('option');
+                
+                // Create dropdown menu items
+                let dropdownHTML = '';
+                options.forEach(opt => {
+                    if (opt.value) { // Skip empty option
+                        dropdownHTML += `
+                            <div class="bucket-option" onclick="selectBucket(${index}, '${opt.value}', '${opt.textContent}')" 
+                                 style="padding: 0.5rem 0.75rem; cursor: pointer; hover: background-color: #f0f0f0; border-bottom: 1px solid #eee;">
+                                ${opt.textContent}
+                            </div>
+                        `;
+                    }
+                });
+                
+                bucketDropdown.innerHTML = dropdownHTML;
                 
                 // Set the bucket ID selection (use default if bucketId is null or undefined)
                 const finalBucketId = bucketId || defaultBucketId;
                 if (finalBucketId) {
-                    bucketSelect.value = finalBucketId;
+                    bucketInput.value = finalBucketId;
                 }
-                
-                // Add onchange event to move subnote between buckets
-                bucketSelect.addEventListener('change', function() {
-                    moveSubNoteToBucketSection(index, this.value);
-                });
             }
             
             // Initialize Quill editor for this sub-note (only if not linked)
@@ -1841,6 +1888,17 @@
             // Close modal
             $('#subNoteTagsModal').modal('hide');
             
+            // Auto-save if this is an existing subnote
+            const subNoteIndex = Number(currentSubNoteIndex);
+            const subNoteElement = document.getElementById(`subNote-${subNoteIndex}`);
+            if (subNoteElement) {
+                const subNoteId = subNoteElement.getAttribute('data-subnote-id');
+                if (subNoteId && subNoteId !== '') {
+                    // This is an existing subnote - auto-save it
+                    setTimeout(() => saveSubNoteOnly(subNoteIndex), 300);
+                }
+            }
+            
             // Mark as changed
             checkForChanges();
         }
@@ -2024,6 +2082,17 @@
             // Close modal
             $('#subNoteTeamMembersModal').modal('hide');
             
+            // Auto-save if this is an existing subnote
+            const subNoteIndex = Number(currentSubNoteIndexForTeamMembers);
+            const subNoteElement = document.getElementById(`subNote-${subNoteIndex}`);
+            if (subNoteElement) {
+                const subNoteId = subNoteElement.getAttribute('data-subnote-id');
+                if (subNoteId && subNoteId !== '') {
+                    // This is an existing subnote - auto-save it
+                    setTimeout(() => saveSubNoteOnly(subNoteIndex), 300);
+                }
+            }
+            
             // Mark as changed
             checkForChanges();
         }
@@ -2096,6 +2165,141 @@
             checkForChanges();
         }
 
+        // Save individual subnote via API (for both new and existing subnotes)
+        function saveSubNoteOnly(index) {
+            const subNoteElement = document.getElementById(`subNote-${index}`);
+            if (!subNoteElement) return;
+            
+            const subNoteId = subNoteElement.getAttribute('data-subnote-id');
+            
+            const headerElement = document.getElementById(`subNoteHeader-${index}`);
+            const descElement = document.getElementById(`subNoteDesc-${index}`);
+            const bucketElement = document.getElementById(`bucketId-${index}`);
+            
+            if (!headerElement || !bucketElement) {
+                alert('Missing required fields');
+                return;
+            }
+            
+            const header = headerElement.value.trim();
+            if (!header) {
+                alert('Header is required');
+                return;
+            }
+            
+            // Get tags and team members for this subnote
+            const indexStr = String(index);
+            const tagIds = (window.subNoteTagsData && window.subNoteTagsData[indexStr]) ? window.subNoteTagsData[indexStr].join('|') : '';
+            const teamMemberIds = (window.subNoteTeamMembersData && window.subNoteTeamMembersData[indexStr]) ? window.subNoteTeamMembersData[indexStr].join('|') : '';
+            
+            // Get description from editor if it exists
+            let description = '';
+            if (subNoteEditors[index] && subNoteEditors[index].root) {
+                description = normalizeQuillHtml(subNoteEditors[index].root.innerHTML);
+            } else if (descElement) {
+                description = descElement.value;
+            }
+            
+            const bucketId = bucketElement.value;
+            const saveBtn = document.querySelector(`#subNote-${index}`).parentElement.querySelector('.btn-subnote-save');
+            const saveStatus = document.getElementById(`saveStatus-${index}`);
+            
+            // Show loading state on button
+            if (saveBtn) {
+                saveBtn.innerHTML = '⏳';
+            }
+            
+            // Determine if this is a new or existing subnote
+            const isNewSubNote = !subNoteId || subNoteId === '';
+            let apiUrl = '';
+            let requestBody = {};
+            
+            if (isNewSubNote) {
+                // Create new subnote - get parent note ID
+                const parentNoteId = document.querySelector('input[th-field="*{id}"]')?.value || 
+                                     document.querySelector('input[name="id"]')?.value;
+                
+                if (!parentNoteId) {
+                    alert('Cannot create sub-note without saving parent note first.');
+                    if (saveBtn) {
+                        saveBtn.innerHTML = '💾';
+                    }
+                    return;
+                }
+                
+                apiUrl = `/api/notes/${parentNoteId}/subnote/create`;
+                requestBody = {
+                    header: header,
+                    description: description,
+                    bucketId: bucketId,
+                    tagIds: tagIds,
+                    teamMemberIds: teamMemberIds
+                };
+            } else {
+                // Update existing subnote
+                apiUrl = `/api/notes/subnote/${subNoteId}/save`;
+                requestBody = {
+                    header: header,
+                    description: description,
+                    bucketId: bucketId,
+                    tagIds: tagIds,
+                    teamMemberIds: teamMemberIds
+                };
+            }
+            
+            // Call API to save subnote
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams(requestBody)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // If this was a new subnote creation, update the data-subnote-id attribute
+                    if (isNewSubNote && data.subNoteId) {
+                        subNoteElement.setAttribute('data-subnote-id', data.subNoteId);
+                        // Update the hidden input with the new subnote ID
+                        const hiddenInput = subNoteElement.querySelector('input[name="subNoteIds"]');
+                        if (hiddenInput) {
+                            hiddenInput.value = data.subNoteId;
+                        }
+                    }
+                    
+                    // Show success status
+                    if (saveStatus) {
+                        saveStatus.style.display = 'inline';
+                        if (saveBtn) saveBtn.style.display = 'none';
+                        
+                        setTimeout(() => {
+                            if (saveStatus) saveStatus.style.display = 'none';
+                            if (saveBtn) {
+                                saveBtn.style.display = 'inline-block';
+                                saveBtn.innerHTML = '💾';
+                            }
+                        }, 2000);
+                    } else {
+                        if (saveBtn) {
+                            saveBtn.innerHTML = '💾';
+                        }
+                    }
+                } else {
+                    console.error('Failed to save:', data.message);
+                    if (saveBtn) {
+                        saveBtn.innerHTML = '💾';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (saveBtn) {
+                    saveBtn.innerHTML = '💾';
+                }
+            });
+        }
+
         function initializeSubNoteEditor(index) {
             if (subNoteEditors[index]) {
                 return;
@@ -2132,6 +2336,49 @@
                 }
                 checkForChanges();
             });
+        }
+        
+        // Toggle bucket dropdown visibility
+        function toggleBucketDropdown(index) {
+            const button = document.getElementById(`bucketToggle-${index}`);
+            const dropdown = document.getElementById(`bucketDropdown-${index}`);
+            if (dropdown && button) {
+                if (dropdown.style.display === 'none') {
+                    // Position dropdown below button
+                    const rect = button.getBoundingClientRect();
+                    dropdown.style.top = (rect.bottom + 5) + 'px';
+                    dropdown.style.left = rect.left + 'px';
+                    dropdown.style.display = 'block';
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            }
+        }
+        
+        // Select bucket from dropdown
+        function selectBucket(index, bucketId, bucketName) {
+            const bucketInput = document.getElementById(`bucketId-${index}`);
+            const bucketDropdown = document.getElementById(`bucketDropdown-${index}`);
+            
+            if (bucketInput) {
+                bucketInput.value = bucketId;
+            }
+            if (bucketDropdown) {
+                bucketDropdown.style.display = 'none';
+            }
+            
+            // Move subnote and auto-save
+            moveSubNoteToBucketSection(index, bucketId);
+            
+            // Auto-save if this is an existing subnote
+            const subNoteElement = document.getElementById(`subNote-${index}`);
+            if (subNoteElement) {
+                const subNoteId = subNoteElement.getAttribute('data-subnote-id');
+                if (subNoteId && subNoteId !== '') {
+                    // Auto-save this subnote with new bucket
+                    setTimeout(() => saveSubNoteOnly(index), 300);
+                }
+            }
         }
         
         function toggleDescription(index) {
@@ -2461,6 +2708,18 @@
             nameInput = document.getElementById('name'); // Assign to global
             const form = document.querySelector('form');
             const nestedCheckbox = document.getElementById('nested');
+            
+            // Close bucket dropdowns when clicking outside
+            document.addEventListener('click', function(event) {
+                const target = event.target;
+                // Check if click is on a bucket button or inside a bucket dropdown
+                if (!target.closest('.bucket-button-dropdown')) {
+                    // Close all bucket dropdowns
+                    document.querySelectorAll('.bucket-dropdown-menu').forEach(dropdown => {
+                        dropdown.style.display = 'none';
+                    });
+                }
+            });
             
             // Initialize Quill.js
             quill = new Quill('#details-editor', { // Assign to global
