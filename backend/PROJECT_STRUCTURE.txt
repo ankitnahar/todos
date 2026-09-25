@@ -1,0 +1,116 @@
+Spring Boot 3.x Notes Management Backend - Complete Project Structure
+======================================================================
+
+Project Location: /home/titan/project/todo-app/backend/
+
+CONFIGURATION FILES:
+-------------------
+✓ pom.xml                          - Maven configuration with all dependencies
+✓ .gitignore                       - Git ignore file
+✓ README.md                        - Project documentation
+✓ src/main/resources/application.properties - Spring Boot configuration
+
+ENTITY CLASSES (6):
+------------------
+✓ Bucket.java                      - Bucket entity with priority and color
+✓ Tag.java                         - Tag entity
+✓ TeamMember.java                  - Team member entity
+✓ Note.java                        - Main note entity with relationships
+✓ SubNote.java                     - Sub-note entity with relationships
+✓ FileAttachment.java              - File attachment entity (NEW)
+
+REPOSITORY INTERFACES (6):
+-------------------------
+✓ BucketRepository.java            - Bucket data access with custom queries
+✓ TagRepository.java               - Tag data access
+✓ TeamMemberRepository.java        - Team member data access
+✓ NoteRepository.java              - Note data access with complex queries
+✓ SubNoteRepository.java           - SubNote data access with queries
+✓ FileAttachmentRepository.java    - File attachment data access
+
+SERVICE CLASSES (5):
+-------------------
+✓ BucketService.java               - Bucket business logic and CRUD
+✓ TagService.java                  - Tag business logic with find/create
+✓ TeamMemberService.java           - Team member business logic
+✓ NoteService.java                 - Comprehensive note/subnote operations
+✓ FileService.java                 - File upload/download/delete operations
+
+DTO CLASSES (9):
+---------------
+✓ NoteDTO.java                     - Note data transfer object
+✓ SubNoteDTO.java                  - SubNote data transfer object
+✓ NoteCreateRequest.java           - Create note request
+✓ NoteUpdateRequest.java           - Update note request
+✓ SubNoteCreateRequest.java        - Create subnote request
+✓ SubNoteUpdateRequest.java        - Update subnote request
+✓ HotTopicItemDTO.java             - Hot topic item DTO
+✓ BucketViewDTO.java               - Bucket view consolidated DTO
+✓ StatsDTO.java                    - Statistics DTO
+
+CONTROLLER CLASSES (5):
+----------------------
+✓ BucketController.java            - Bucket REST endpoints + bucket view
+✓ TagController.java               - Tag REST endpoints
+✓ TeamMemberController.java        - Team member REST endpoints
+✓ NoteController.java              - Comprehensive note/subnote endpoints
+✓ FileController.java              - File upload/download endpoints
+
+CONFIGURATION CLASSES (2):
+-------------------------
+✓ CorsConfig.java                  - CORS configuration for localhost:3000
+✓ NoteAppApplication.java          - Main Spring Boot application class
+
+KEY FEATURES IMPLEMENTED:
+------------------------
+✓ Full CRUD operations for all entities
+✓ Complex filtering (tags, buckets, team members, track status)
+✓ Tag matching modes (any/all)
+✓ Favorite notes
+✓ Hot topic tracking (notes and subnotes)
+✓ Soft delete/restore for notes
+✓ Track today functionality
+✓ Move notes/subnotes between buckets
+✓ Move subnotes between notes
+✓ Convert subnote to note
+✓ Duplicate notes with subnotes
+✓ File attachments with upload/download
+✓ Bucket view (consolidated data)
+✓ Statistics endpoint
+✓ Hot topics aggregation
+✓ Search functionality
+
+DATABASE:
+--------
+- Connects to existing H2 database at ./data/todo.mv.db
+- Tables: buckets, tags, team_members, notes, sub_notes, file_attachments
+- Join tables: note_tags, note_team_members, sub_note_tags, sub_note_team_members
+- JPA with Hibernate (ddl-auto=update)
+
+API ENDPOINTS:
+-------------
+- 6 Bucket endpoints
+- 5 Tag endpoints  
+- 5 Team Member endpoints
+- 22 Note/SubNote endpoints
+- 6 File endpoints
+Total: 44 REST API endpoints
+
+TECHNICAL STACK:
+---------------
+- Spring Boot 3.3.2
+- Spring Data JPA
+- H2 Database
+- Lombok
+- Jakarta Validation
+- Jackson for JSON
+- Java 17
+
+READY TO RUN:
+------------
+mvn spring-boot:run
+
+Server will start on: http://localhost:8080
+H2 Console: http://localhost:8080/h2-console
+CORS enabled for: http://localhost:3000
+

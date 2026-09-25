@@ -1,0 +1,29 @@
+# Backend
+backend/target/
+backend/.mvn/repository/
+backend/*.jar
+backend/*.war
+backend/data/uploads/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PID files
+.backend.pid
+.frontend.pid
+
+# Logs
+*.log
