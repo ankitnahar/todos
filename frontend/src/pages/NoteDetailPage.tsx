@@ -45,6 +45,7 @@ export function NoteDetailPage() {
     mutationFn: () => notesApi.toggleFavorite(Number(id)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['note', id] });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 
@@ -52,6 +53,7 @@ export function NoteDetailPage() {
     mutationFn: () => notesApi.toggleHotTopic(Number(id)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['note', id] });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 

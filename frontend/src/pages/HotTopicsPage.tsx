@@ -591,7 +591,7 @@ export function HotTopicsPage() {
                   else deleteSubNoteMutation.mutate(item.id);
                 }
               }}
-              className="p-1 rounded hover:bg-danger-100 dark:hover:bg-danger-900/30 text-gray-400 hover:text-danger-600"
+              className="p-1 rounded hover:bg-danger-100 dark:hover:bg-danger-900/30 text-danger-500 dark:text-danger-400 hover:text-danger-700 dark:hover:text-danger-300"
               title="Delete"
             >
               <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
@@ -654,6 +654,7 @@ export function HotTopicsPage() {
                 const noteMap = itemsByBucketByNote.get(bucketId) || new Map<string, { noteName: string; noteId: number; items: HotTopicItem[] }>();
                 return Array.from(noteMap.entries()).map(([noteKey, { noteName, noteId, items: noteItems }]) => {
                   const isNoteExpanded = expandedNotes.has(noteId);
+                  const isNested = noteItems.some((item) => item.type === 'subnote');
                   return (
                     <div key={noteKey} className="border-b border-gray-100 dark:border-gray-700 last:border-b-0">
                       <div
@@ -664,23 +665,27 @@ export function HotTopicsPage() {
                         <FolderOpen className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
                         <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{noteName}</span>
                         <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">({noteItems.length})</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const todoBucket = buckets.find((b) => b.name.toLowerCase() === 'todo') || buckets.reduce((a, b) => a.priority > b.priority ? a : b, buckets[0]);
-                            addSubNoteMutation.mutate({ noteId, header: 'New SubNote', bucketId: todoBucket?.id });
-                          }}
-                          className="ml-auto p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-                          title="Add priority subnote"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/notes/${noteId}`); }}
-                          className="text-xs px-3 py-1 rounded-md font-medium bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
-                        >
-                          View
-                        </button>
+                        <div className="ml-auto flex items-center gap-1">
+                          {isNested && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const todoBucket = buckets.find((b) => b.name.toLowerCase() === 'todo') || buckets.reduce((a, b) => a.priority > b.priority ? a : b, buckets[0]);
+                                addSubNoteMutation.mutate({ noteId, header: 'New SubNote', bucketId: todoBucket?.id });
+                              }}
+                              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                              title="Add priority subnote"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/notes/${noteId}`); }}
+                            className={clsx('text-xs px-3 py-1 rounded-md font-medium text-white', isNested ? 'bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600' : 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500')}
+                          >
+                            View
+                          </button>
+                        </div>
                       </div>
                       {isNoteExpanded && (
                         <div className="pl-11">

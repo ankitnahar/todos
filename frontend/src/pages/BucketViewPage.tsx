@@ -5,9 +5,10 @@ import { notesApi, subNotesApi } from '@/api/notes';
 import { tagsApi } from '@/api/tags';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { Badge } from '@/components/shared/Badge';
 import { QuickAddNoteModal } from '@/components/notes/QuickAddNoteModal';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { useDailyDismiss } from '@/hooks/useDailyDismiss';
+import { useClickOutside } from '@/hooks/useClickOutside';
 import {
   Layers,
   Star,
@@ -28,6 +29,11 @@ import {
   Plus,
   Trash2,
   Filter,
+  CheckCircle2,
+  ChevronsDown,
+  ChevronsUp,
+  GitBranch,
+  FileText,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useReferenceData } from '@/hooks/useReferenceData';
@@ -70,23 +76,26 @@ function htmlToPlainText(html: string): string {
   return text.trim();
 }
 
-type TypeFilter = 'all' | 'favorites' | 'hot';
+
 
 export function BucketViewPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { tags, teamMembers, getTags, getTeamMembers } = useReferenceData();
 
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [filterHot, setFilterHot] = useState(true);
+  const [filterFavorites, setFilterFavorites] = useState(false);
   const [selectedBucketIds, setSelectedBucketIds] = useState<number[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [tagMatchMode, setTagMatchMode] = useState<'AND' | 'OR'>('AND');
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
   const [groupByNote, setGroupByNote] = useState(true);
   const [showMeta, setShowMeta] = useState(false);
+  const [showDismissed, setShowDismissed] = useState(false);
+  const { dismiss, undismiss, isDismissed, dismissedCount } = useDailyDismiss();
   useKeyboard('m', () => setShowMeta((v) => !v), [], { modifier: 'alt' });
   const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
-  const [expandedSubNotes, setExpandedSubNotes] = useState<Set<number>>(new Set());
+  const [expandedSubNotes, setExpandedSubNotes] = useState<Set<string>>(new Set());
   const [collapsedBuckets, setCollapsedBuckets] = useState<Set<number>>(new Set());
   const [editingDescriptions, setEditingDescriptions] = useState<Record<string, string>>({});
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -95,6 +104,13 @@ export function BucketViewPage() {
   const [bucketDropOpen, setBucketDropOpen] = useState(false);
   const [tagDropOpen, setTagDropOpen] = useState(false);
   const [memberDropOpen, setMemberDropOpen] = useState(false);
+
+  const bucketDropRef = useRef<HTMLDivElement>(null);
+  const tagDropRef = useRef<HTMLDivElement>(null);
+  const memberDropRef = useRef<HTMLDivElement>(null);
+  useClickOutside(bucketDropRef, () => setBucketDropOpen(false), bucketDropOpen);
+  useClickOutside(tagDropRef, () => setTagDropOpen(false), tagDropOpen);
+  useClickOutside(memberDropRef, () => setMemberDropOpen(false), memberDropOpen);
   const [tagSearch, setTagSearch] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
 
@@ -106,6 +122,7 @@ export function BucketViewPage() {
   const { data: allNotes = [], isLoading: notesLoading } = useQuery({
     queryKey: ['notes'],
     queryFn: () => notesApi.getAll(),
+    staleTime: 0,
   });
 
   const toggleHotTopicMutation = useMutation({
@@ -150,6 +167,16 @@ export function BucketViewPage() {
       toast.success('Note deleted');
     },
     onError: () => toast.error('Failed to delete'),
+  });
+
+  const addSubNoteMutation = useMutation({
+    mutationFn: ({ noteId, header, bucketId }: { noteId: number; header: string; bucketId?: number }) =>
+      subNotesApi.create(noteId, { header, bucketId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      toast.success('SubNote added');
+    },
+    onError: () => toast.error('Failed to add subnote'),
   });
 
   const handleDescChange = useCallback((key: string, value: string) => {
@@ -223,16 +250,11 @@ export function BucketViewPage() {
     if (expandedSubNotes.size === 0) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      // editingDescriptions keys are "<type>-<id>"; find one whose id is in expandedSubNotes
-      const unsavedKey = Object.keys(editingDescriptions).find((k) => {
-        const id = Number(k.split('-')[1]);
-        return expandedSubNotes.has(id);
-      });
+      const unsavedKey = Object.keys(editingDescriptions).find((k) => expandedSubNotes.has(k));
       if (unsavedKey) {
         if (!confirm('You have unsaved changes. Discard them?')) return;
         setEditingDescriptions((prev) => { const next = { ...prev }; delete next[unsavedKey]; return next; });
-        const itemId = Number(unsavedKey.split('-')[1]);
-        setExpandedSubNotes((prev) => { const next = new Set(prev); next.delete(itemId); return next; });
+        setExpandedSubNotes((prev) => { const next = new Set(prev); next.delete(unsavedKey); return next; });
       } else {
         setExpandedSubNotes(new Set());
       }
@@ -350,8 +372,8 @@ export function BucketViewPage() {
   // Apply filters
   const filteredItems = useMemo(() => {
     return allItems.filter((item) => {
-      if (typeFilter === 'favorites' && !item.favorite) return false;
-      if (typeFilter === 'hot' && !item.hotTopic) return false;
+      if (filterFavorites && !item.favorite) return false;
+      if (filterHot && !item.hotTopic) return false;
       if (selectedBucketIds.length > 0 && !selectedBucketIds.includes(item.bucketId || 0)) return false;
       if (selectedTagIds.length > 0) {
         const combinedTagIds = [...item.tagIds, ...(item.parentNote?.tagIds || [])];
@@ -363,29 +385,39 @@ export function BucketViewPage() {
       if (selectedMemberIds.length > 0 && !selectedMemberIds.some((mid) => item.teamMemberIds.includes(mid))) return false;
       return true;
     });
-  }, [allItems, typeFilter, selectedBucketIds, selectedTagIds, selectedMemberIds]);
+  }, [allItems, filterHot, filterFavorites, selectedBucketIds, selectedTagIds, tagMatchMode, selectedMemberIds]);
+
+  const dismissedInFilter = useMemo(
+    () => filteredItems.filter((item) => isDismissed(`${item.type}_${item.id}`)).length,
+    [filteredItems, isDismissed, dismissedCount]
+  );
+
+  const visibleItems = useMemo(
+    () => showDismissed ? filteredItems : filteredItems.filter((item) => !isDismissed(`${item.type}_${item.id}`)),
+    [filteredItems, showDismissed, isDismissed, dismissedCount]
+  );
 
   // Group items by bucket
   const itemsByBucket = useMemo(() => {
-    const map = new Map<number, typeof filteredItems>();
+    const map = new Map<number, typeof visibleItems>();
     sortedBuckets.forEach((b) => map.set(b.id, []));
     map.set(0, []); // unassigned
-    filteredItems.forEach((item) => {
+    visibleItems.forEach((item) => {
       const key = item.bucketId || 0;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     });
     return map;
-  }, [filteredItems, sortedBuckets]);
+  }, [visibleItems, sortedBuckets]);
 
   // Group items by bucket then by parent note (for groupByNote mode)
   const itemsByBucketByNote = useMemo(() => {
     if (!groupByNote) return null;
-    const result = new Map<number, Map<number, typeof filteredItems>>();
+    const result = new Map<number, Map<number, typeof visibleItems>>();
     sortedBuckets.forEach((b) => result.set(b.id, new Map()));
     result.set(0, new Map());
 
-    filteredItems.forEach((item) => {
+    visibleItems.forEach((item) => {
       const bucketKey = item.bucketId || 0;
       if (!result.has(bucketKey)) result.set(bucketKey, new Map());
       const noteMap = result.get(bucketKey)!;
@@ -394,7 +426,7 @@ export function BucketViewPage() {
       noteMap.get(noteKey)!.push(item);
     });
     return result;
-  }, [filteredItems, sortedBuckets, groupByNote]);
+  }, [visibleItems, sortedBuckets, groupByNote]);
 
   const expandAllNotes = useCallback(() => {
     if (!itemsByBucketByNote) return;
@@ -411,6 +443,24 @@ export function BucketViewPage() {
 
   useKeyboard('ArrowDown', expandAllNotes, [itemsByBucketByNote], { modifier: 'alt' });
   useKeyboard('ArrowUp', collapseAllNotes, [], { modifier: 'alt' });
+
+  // Auto-expand any note group that appears (initial load, filter changes, flat→grouped toggle)
+  useEffect(() => {
+    if (!itemsByBucketByNote) return;
+    setExpandedNotes((prev) => {
+      const updated = new Set(prev);
+      let changed = false;
+      itemsByBucketByNote.forEach((noteMap) => {
+        noteMap.forEach((_, noteId) => {
+          if (!updated.has(noteId)) {
+            updated.add(noteId);
+            changed = true;
+          }
+        });
+      });
+      return changed ? updated : prev;
+    });
+  }, [itemsByBucketByNote]);
 
   const toggleBucketFilter = (id: number) => {
     setSelectedBucketIds((prev) =>
@@ -497,14 +547,14 @@ export function BucketViewPage() {
   };
 
   const clearAllFilters = () => {
-    setTypeFilter('all');
+    setFilterHot(false);
+    setFilterFavorites(false);
     setSelectedBucketIds([]);
     setSelectedTagIds([]);
     setSelectedMemberIds([]);
   };
 
   const activeFilterCount =
-    (typeFilter !== 'all' ? 1 : 0) +
     selectedBucketIds.length +
     selectedTagIds.length +
     selectedMemberIds.length;
@@ -542,7 +592,8 @@ export function BucketViewPage() {
       ? getTags((item.parentNote.tagIds || []).filter((id) => !ownTagIdSet.has(id)))
       : [];
     const itemMembers = getTeamMembers(item.teamMemberIds);
-    const isExpanded = expandedSubNotes.has(item.id);
+    const descKey = `${item.type}-${item.id}`;
+    const isExpanded = expandedSubNotes.has(descKey);
     const hasDescription = !!(item.description || item.details);
 
     return (
@@ -554,16 +605,20 @@ export function BucketViewPage() {
         )}
       >
         <div
-          className="flex items-start gap-3 px-4 py-2.5 cursor-pointer"
+          className="flex items-center gap-2 px-3 py-2 cursor-pointer"
           onClick={() => setExpandedSubNotes((prev) => {
             const next = new Set(prev);
-            if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+            if (next.has(descKey)) next.delete(descKey); else next.add(descKey);
             return next;
           })}
         >
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              {item.favorite && <Star className="w-4 h-4 stroke-[2.5] fill-warning-400 text-warning-400 flex-shrink-0" />}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {item.type === 'subnote'
+                ? <GitBranch className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                : <FileText className="w-3 h-3 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              }
+              {item.type === 'note' && item.favorite && <Star className="w-3 h-3 stroke-[2.5] fill-warning-400 text-warning-400 flex-shrink-0" />}
               {editingTitle?.type === item.type && editingTitle.id === item.id ? (
                 <input
                   type="text"
@@ -572,12 +627,12 @@ export function BucketViewPage() {
                   onBlur={handleTitleSave}
                   onKeyDown={handleTitleKeyDown}
                   onClick={(e) => e.stopPropagation()}
-                  className="flex-1 text-base font-medium bg-white dark:bg-gray-800 border border-primary-400 rounded px-2 py-0.5 focus:ring-1 focus:ring-primary-500 outline-none"
+                  className="flex-1 text-sm font-medium bg-white dark:bg-gray-800 border border-primary-400 rounded px-2 py-0.5 focus:ring-1 focus:ring-primary-500 outline-none"
                   autoFocus
                 />
               ) : (
                 <span
-                  className="text-[15px] font-medium text-gray-900 dark:text-gray-100 break-words min-w-0"
+                  className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words min-w-0"
                   onDoubleClick={(e) => handleTitleDoubleClick(e, item.type, item.id, item.name)}
                   title="Double-click to edit"
                 >
@@ -587,27 +642,28 @@ export function BucketViewPage() {
               {item.type === 'subnote' && item.parentNote && (
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate(`/notes/${item.parentNote!.id}`); }}
-                  className="text-xs text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100 hover:underline flex-shrink-0 font-medium"
+                  className="inline-flex items-center gap-0.5 text-xs text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100 hover:underline flex-shrink-0 font-medium"
                   title={`Go to note: ${item.parentNote.name}`}
                 >
+                  {item.parentNote.favorite && <Star className="w-2.5 h-2.5 stroke-[2.5] fill-warning-400 text-warning-400" />}
                   ↗ {item.parentNote.name}
                 </button>
               )}
             </div>
             {showMeta && (itemTags.length > 0 || inheritedTags.length > 0 || itemMembers.length > 0) && (
-              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 {itemTags.map((t) => (
-                  <span key={t.id} className="px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium border border-blue-200 dark:border-blue-800">
+                  <span key={t.id} className="px-1.5 py-0.5 text-[10px] rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium border border-blue-200 dark:border-blue-800">
                     {t.name}
                   </span>
                 ))}
                 {inheritedTags.map((t) => (
-                  <span key={`inh-${t.id}`} className="px-2 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 font-normal border border-dashed border-gray-300 dark:border-gray-600 italic" title="Inherited from parent note">
+                  <span key={`inh-${t.id}`} className="px-1.5 py-0.5 text-[10px] rounded-full bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 font-normal border border-dashed border-gray-300 dark:border-gray-600 italic" title="Inherited from parent note">
                     {t.name}
                   </span>
                 ))}
                 {itemMembers.map((m) => (
-                  <span key={m.id} className="px-2 py-0.5 text-xs rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium border border-purple-200 dark:border-purple-800">
+                  <span key={m.id} className="px-1.5 py-0.5 text-[10px] rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium border border-purple-200 dark:border-purple-800">
                     {m.name}
                   </span>
                 ))}
@@ -615,48 +671,61 @@ export function BucketViewPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-0.5 flex-shrink-0">
+          <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             <button
-              onClick={(e) => { e.stopPropagation(); openInlinePopup('tags', item.type, item.id, item.tagIds, item.teamMemberIds, item.bucketId); }}
-              className={clsx('p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700', item.tagIds.length > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400')}
+              onClick={() => openInlinePopup('tags', item.type, item.id, item.tagIds, item.teamMemberIds, item.bucketId)}
+              className={clsx('p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700', item.tagIds.length > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400')}
               title="Edit tags"
             >
-              <Tag className="w-4 h-4 stroke-[2]" />
+              <Tag className="w-3.5 h-3.5 stroke-[2]" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); openInlinePopup('assignees', item.type, item.id, item.tagIds, item.teamMemberIds, item.bucketId); }}
-              className={clsx('p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700', item.teamMemberIds.length > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400')}
+              onClick={() => openInlinePopup('assignees', item.type, item.id, item.tagIds, item.teamMemberIds, item.bucketId)}
+              className={clsx('p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700', item.teamMemberIds.length > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-600 dark:text-gray-400')}
               title="Edit assignees"
             >
-              <Users className="w-4 h-4 stroke-[2]" />
+              <Users className="w-3.5 h-3.5 stroke-[2]" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); openInlinePopup('bucket', item.type, item.id, item.tagIds, item.teamMemberIds, item.bucketId); }}
-              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              onClick={() => openInlinePopup('bucket', item.type, item.id, item.tagIds, item.teamMemberIds, item.bucketId)}
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
               title="Change bucket"
             >
-              <Layers className="w-4 h-4 stroke-[2]" />
+              <Layers className="w-3.5 h-3.5 stroke-[2]" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); item.type === 'note' ? toggleHotTopicMutation.mutate(item.id) : toggleSubNoteHotTopicMutation.mutate(item.id); }}
-              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => { item.type === 'note' ? toggleHotTopicMutation.mutate(item.id) : toggleSubNoteHotTopicMutation.mutate(item.id); }}
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               title="Toggle hot topic"
             >
-              <Flame className={clsx('w-4 h-4 stroke-[2.5]', item.hotTopic ? 'fill-danger-400 text-danger-500' : 'text-gray-500 fill-none')} />
+              <Flame className={clsx('w-3.5 h-3.5 stroke-[2.5]', item.hotTopic ? 'fill-danger-400 text-danger-500' : 'text-gray-600 dark:text-gray-400 fill-none')} />
             </button>
+            {(() => {
+              const dimKey = `${item.type}_${item.id}`;
+              const dismissed = isDismissed(dimKey);
+              return (
+                <button
+                  onClick={() => dismissed ? undismiss(dimKey) : dismiss(dimKey)}
+                  className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title={dismissed ? 'Unmark — show again today' : 'Done for today'}
+                >
+                  <CheckCircle2 className={clsx('w-3.5 h-3.5 stroke-[2]', dismissed ? 'fill-success-500 text-white' : 'text-gray-600 dark:text-gray-400 hover:text-success-500 fill-none')} />
+                </button>
+              );
+            })()}
             <button
-              onClick={(e) => { e.stopPropagation(); setExpandedSubNotes((prev) => { const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; }); }}
-              className={clsx('p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700', hasDescription ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400')}
+              onClick={() => setExpandedSubNotes((prev) => { const next = new Set(prev); if (next.has(descKey)) next.delete(descKey); else next.add(descKey); return next; })}
+              className={clsx('p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700', hasDescription ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400')}
               title="Toggle description"
             >
-              <Eye className="w-4 h-4 stroke-[2]" />
+              <Eye className="w-3.5 h-3.5 stroke-[2]" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); navigate(item.type === 'note' ? `/notes/${item.id}/edit` : `/notes/${item.parentNote!.id}/edit?subNoteId=${item.id}`); }}
-              className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => navigate(item.type === 'note' ? `/notes/${item.id}/edit` : `/notes/${item.parentNote!.id}/edit?subNoteId=${item.id}`)}
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               title="Edit"
             >
-              <Edit className="w-4 h-4 text-gray-500 dark:text-gray-400 stroke-[2]" />
+              <Edit className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400 stroke-[2]" />
             </button>
             <button
               onClick={(e) => {
@@ -666,10 +735,10 @@ export function BucketViewPage() {
                   else deleteSubNoteMutation.mutate(item.id);
                 }
               }}
-              className="p-1.5 rounded hover:bg-danger-100 dark:hover:bg-danger-900/30 text-gray-400 hover:text-danger-600"
+              className="p-1 rounded hover:bg-danger-100 dark:hover:bg-danger-900/30 text-danger-500 dark:text-danger-400 hover:text-danger-700 dark:hover:text-danger-300"
               title="Delete"
             >
-              <Trash2 className="w-4 h-4 stroke-[2]" />
+              <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
             </button>
           </div>
         </div>
@@ -677,14 +746,14 @@ export function BucketViewPage() {
         {isExpanded && (
           <div className="px-3 pb-2 pl-6" onClick={(e) => e.stopPropagation()}>
             <RichTextEditor
-              content={editingDescriptions[`${item.type}-${item.id}`] ?? (item.description || item.details || '')}
-              onChange={(val) => handleDescChange(`${item.type}-${item.id}`, val)}
+              content={editingDescriptions[descKey] ?? (item.description || item.details || '')}
+              onChange={(val) => handleDescChange(descKey, val)}
               compact
             />
-            {editingDescriptions[`${item.type}-${item.id}`] !== undefined && (
+            {editingDescriptions[descKey] !== undefined && (
               <div className="flex justify-end mt-1">
                 <button
-                  onClick={() => saveDescription(item.type, item.id, `${item.type}-${item.id}`)}
+                  onClick={() => saveDescription(item.type, item.id, descKey)}
                   className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-primary-600 rounded hover:bg-primary-700"
                 >
                   <Save className="w-3 h-3" /> Save
@@ -734,19 +803,34 @@ export function BucketViewPage() {
                   return (
                     <div key={noteId} className="border-b border-gray-100 dark:border-gray-700 last:border-b-0">
                       <div
-                        className="flex items-center gap-2.5 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 cursor-pointer"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800/50 cursor-pointer"
                         onClick={() => setExpandedNotes((prev) => { const next = new Set(prev); if (next.has(noteId)) next.delete(noteId); else next.add(noteId); return next; })}
                       >
-                        {isNoteExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-                        <FolderOpen className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{noteName}</span>
-                        <Badge variant="default">{noteItems.length}</Badge>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/notes/${noteId}`); }}
-                          className="ml-auto text-xs px-2.5 py-1 rounded border border-primary-300 text-primary-600 hover:bg-primary-50 dark:border-primary-700 dark:text-primary-400 font-medium"
-                        >
-                          View
-                        </button>
+                        {isNoteExpanded ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                        <FolderOpen className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+                        {parentNote?.favorite && <Star className="w-3 h-3 stroke-[2.5] fill-warning-400 text-warning-400 flex-shrink-0" />}
+                        <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{noteName}</span>
+                        <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">({noteItems.length})</span>
+                        <div className="ml-auto flex items-center gap-1">
+                          {parentNote?.nested && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addSubNoteMutation.mutate({ noteId, header: 'New SubNote', bucketId: bucketId || undefined });
+                              }}
+                              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                              title="Add subnote"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/notes/${noteId}`); }}
+                            className={clsx('text-xs px-3 py-1 rounded-md font-medium text-white', parentNote?.nested ? 'bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600' : 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500')}
+                          >
+                            View
+                          </button>
+                        </div>
                       </div>
                       {isNoteExpanded && (
                         <div className="pl-11">
@@ -776,102 +860,92 @@ export function BucketViewPage() {
 
   return (
     <div className="space-y-3">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Bucket View</h1>
-        <div className="flex items-center gap-2">
-          {/* Show/hide tags & assignees */}
+      {/* Header — title + bucket count chips + controls all in one row */}
+      <div className="flex flex-wrap items-center gap-2">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 shrink-0">Bucket View</h1>
+
+        {/* Bucket count chips */}
+        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0 justify-center">
+          {sortedBuckets.map((bucket) => {
+            const count = (itemsByBucket.get(bucket.id) || []).length;
+            return (
+              <div
+                key={bucket.id}
+                className="flex flex-col items-center px-3 py-1 rounded-md bg-white dark:bg-gray-800 shadow-sm cursor-pointer hover:shadow-md transition-shadow min-w-[48px]"
+                style={{ borderTop: `2px solid ${bucket.color}`, borderBottom: `2px solid ${bucket.color}` }}
+                onClick={() => toggleBucketFilter(bucket.id)}
+                title={`Click to ${selectedBucketIds.includes(bucket.id) ? 'remove' : 'add'} filter`}
+              >
+                <span className="text-[11px] font-semibold leading-tight" style={{ color: bucket.color }}>{bucket.name}</span>
+                <span className="text-sm font-bold leading-tight" style={{ color: bucket.color }}>{count}</span>
+                {selectedBucketIds.includes(bucket.id) && <span className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-0.5" />}
+              </div>
+            );
+          })}
+          {(itemsByBucket.get(0) || []).length > 0 && (
+            <div className="flex flex-col items-center px-3 py-1 rounded-md bg-white dark:bg-gray-800 shadow-sm min-w-[48px]" style={{ borderTop: '2px solid #9ca3af', borderBottom: '2px solid #9ca3af' }}>
+              <span className="text-[11px] font-semibold leading-tight text-gray-500">Unassigned</span>
+              <span className="text-sm font-bold leading-tight text-gray-500">{(itemsByBucket.get(0) || []).length}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Flat / Grouped toggle */}
+        <div className="rounded-lg p-[1.5px] shrink-0" style={{ background: 'linear-gradient(to right, #f59e0b, #ef4444, #22c55e, #6366f1)' }}>
+        <div className="flex items-center rounded-[6px] overflow-hidden divide-x divide-violet-400 dark:divide-violet-500 bg-white dark:bg-gray-900">
           <button
-            onClick={() => setShowMeta((v) => !v)}
-            className={clsx(
-              'inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border',
-              showMeta
-                ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border-primary-300 dark:border-primary-700 font-medium'
-                : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
-            )}
-            title={showMeta ? 'Hide tags & assignees' : 'Show tags & assignees'}
+            onClick={() => setGroupByNote(false)}
+            className={clsx('inline-flex items-center gap-1 px-2.5 py-1.5 text-xs', !groupByNote ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800')}
           >
-            {showMeta ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            Meta
+            <List className="w-3.5 h-3.5" /> Flat
           </button>
-          {/* Flat / Grouped toggle */}
-          <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden divide-x divide-gray-300 dark:divide-gray-600">
+          <button
+            onClick={() => setGroupByNote(true)}
+            className={clsx('inline-flex items-center gap-1 px-2.5 py-1.5 text-xs', groupByNote ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800')}
+          >
+            <FolderOpen className="w-3.5 h-3.5" /> Grouped
+          </button>
+        </div>
+        </div>
+
+        {/* Expand / Collapse all — only in grouped mode */}
+        {groupByNote && (
+          <div className="rounded-lg p-[1.5px] shrink-0" style={{ background: 'linear-gradient(to right, #f59e0b, #ef4444, #22c55e, #6366f1)' }}>
+          <div className="flex items-center rounded-[6px] overflow-hidden divide-x divide-violet-400 dark:divide-violet-500 bg-white dark:bg-gray-900">
             <button
-              onClick={() => setGroupByNote(false)}
-              className={clsx(
-                'inline-flex items-center gap-1 px-2.5 py-1.5 text-xs',
-                !groupByNote
-                  ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-medium'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-              )}
+              onClick={expandAllNotes}
+              title="Expand all (Alt+↓)"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              <List className="w-3.5 h-3.5" /> Flat
+              <ChevronsDown className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => setGroupByNote(true)}
-              className={clsx(
-                'inline-flex items-center gap-1 px-2.5 py-1.5 text-xs',
-                groupByNote
-                  ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-medium'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-              )}
+              onClick={collapseAllNotes}
+              title="Collapse all (Alt+↑)"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              <FolderOpen className="w-3.5 h-3.5" /> Grouped
+              <ChevronsUp className="w-3.5 h-3.5" />
             </button>
           </div>
-          {/* Copy Titles / Copy All */}
-          <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden divide-x divide-gray-300 dark:divide-gray-600">
-            <button
-              onClick={handleCopyTitles}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-              title="Copy titles"
-            >
-              <Copy className="w-3.5 h-3.5" /> Titles
-            </button>
-            <button
-              onClick={handleCopyAll}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-              title="Copy all content"
-            >
-              <Copy className="w-3.5 h-3.5" /> All
-            </button>
           </div>
+        )}
+
+        {/* Copy Titles / Copy All */}
+        <div className="rounded-lg p-[1.5px] shrink-0" style={{ background: 'linear-gradient(to right, #f59e0b, #ef4444, #22c55e, #6366f1)' }}>
+        <div className="flex items-center rounded-[6px] overflow-hidden divide-x divide-violet-400 dark:divide-violet-500 bg-white dark:bg-gray-900">
+          <button onClick={handleCopyTitles} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800" title="Copy titles">
+            <Copy className="w-3.5 h-3.5" /> Titles
+          </button>
+          <button onClick={handleCopyAll} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800" title="Copy all content">
+            <Copy className="w-3.5 h-3.5" /> All
+          </button>
+        </div>
         </div>
       </div>
 
-      {/* Bucket Legend — always visible */}
-      <div className="flex flex-wrap gap-2">
-        {sortedBuckets.map((bucket) => {
-          const count = (itemsByBucket.get(bucket.id) || []).length;
-          return (
-            <div
-              key={bucket.id}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white dark:bg-gray-800 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-              style={{ borderLeft: `3px solid ${bucket.color}` }}
-              onClick={() => toggleBucketFilter(bucket.id)}
-              title={`Click to ${selectedBucketIds.includes(bucket.id) ? 'remove' : 'add'} filter`}
-            >
-              <span className="text-xs font-semibold" style={{ color: bucket.color }}>{bucket.name}</span>
-              <span className="text-sm font-bold" style={{ color: bucket.color }}>{count}</span>
-              {selectedBucketIds.includes(bucket.id) && (
-                <span className="w-2 h-2 rounded-full bg-primary-500" />
-              )}
-            </div>
-          );
-        })}
-        {(itemsByBucket.get(0) || []).length > 0 && (
-          <div
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white dark:bg-gray-800 shadow-sm"
-            style={{ borderLeft: '3px solid #9ca3af' }}
-          >
-            <span className="text-xs font-semibold text-gray-500">Unassigned</span>
-            <span className="text-sm font-bold text-gray-500">{(itemsByBucket.get(0) || []).length}</span>
-          </div>
-        )}
-      </div>
-
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-3 shadow-sm">
+      <div className="rounded-xl p-[2px]" style={{ background: 'linear-gradient(to right, #f59e0b, #ef4444, #22c55e, #6366f1)' }}>
+      <div className="bg-white dark:bg-gray-900 rounded-[10px] p-3">
         <div className="flex flex-wrap items-center gap-3 text-sm">
           {/* Filter label */}
           <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300 font-semibold">
@@ -886,37 +960,15 @@ export function BucketViewPage() {
 
           <div className="w-px h-6 bg-gray-200 dark:bg-gray-600" />
 
-          {/* Type filter */}
-          <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-0.5">
-            {(['all', 'favorites', 'hot'] as TypeFilter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setTypeFilter(f)}
-                className={clsx(
-                  'px-3 py-1.5 rounded-md inline-flex items-center gap-1.5 font-medium transition-colors',
-                  typeFilter === f
-                    ? 'bg-white dark:bg-gray-600 text-primary-700 dark:text-primary-300 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                )}
-              >
-                {f === 'favorites' && <Star className="w-3.5 h-3.5" />}
-                {f === 'hot' && <Flame className="w-3.5 h-3.5" />}
-                {f === 'all' ? 'All' : f === 'favorites' ? 'Favorites' : 'Hot'}
-              </button>
-            ))}
-          </div>
-
-          <div className="w-px h-6 bg-gray-200 dark:bg-gray-600" />
-
           {/* Bucket multi-select dropdown */}
-          <div className="relative">
+          <div className="relative" ref={bucketDropRef}>
             <button
               onClick={() => { setBucketDropOpen(!bucketDropOpen); setTagDropOpen(false); setMemberDropOpen(false); }}
               className={clsx(
-                'px-3 py-1.5 rounded-lg border inline-flex items-center gap-1.5 font-medium transition-colors',
+                'px-3 py-1.5 rounded-lg border-2 inline-flex items-center gap-1.5 font-medium transition-colors',
                 selectedBucketIds.length > 0
-                  ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-600 text-primary-700 dark:text-primary-300'
-                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300'
+                  ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-600 dark:border-violet-500 text-violet-700 dark:text-violet-300'
+                  : 'border-violet-500 dark:border-violet-400 text-gray-600 dark:text-gray-400 hover:bg-violet-50 dark:hover:bg-violet-900/20'
               )}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -952,14 +1004,14 @@ export function BucketViewPage() {
           </div>
 
           {/* Tags multi-select dropdown */}
-          <div className="relative">
+          <div className="relative" ref={tagDropRef}>
             <button
               onClick={() => { setTagDropOpen(!tagDropOpen); setBucketDropOpen(false); setMemberDropOpen(false); }}
               className={clsx(
-                'px-3 py-1.5 rounded-lg border inline-flex items-center gap-1.5 font-medium transition-colors',
+                'px-3 py-1.5 rounded-lg border-2 inline-flex items-center gap-1.5 font-medium transition-colors',
                 selectedTagIds.length > 0
-                  ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-600 text-primary-700 dark:text-primary-300'
-                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300'
+                  ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-600 dark:border-violet-500 text-violet-700 dark:text-violet-300'
+                  : 'border-violet-500 dark:border-violet-400 text-gray-600 dark:text-gray-400 hover:bg-violet-50 dark:hover:bg-violet-900/20'
               )}
             >
               <Tag className="w-3.5 h-3.5" />
@@ -1008,14 +1060,14 @@ export function BucketViewPage() {
           </div>
 
           {/* Members multi-select dropdown */}
-          <div className="relative">
+          <div className="relative" ref={memberDropRef}>
             <button
               onClick={() => { setMemberDropOpen(!memberDropOpen); setBucketDropOpen(false); setTagDropOpen(false); }}
               className={clsx(
-                'px-3 py-1.5 rounded-lg border inline-flex items-center gap-1.5 font-medium transition-colors',
+                'px-3 py-1.5 rounded-lg border-2 inline-flex items-center gap-1.5 font-medium transition-colors',
                 selectedMemberIds.length > 0
-                  ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-600 text-primary-700 dark:text-primary-300'
-                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300'
+                  ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-600 dark:border-violet-500 text-violet-700 dark:text-violet-300'
+                  : 'border-violet-500 dark:border-violet-400 text-gray-600 dark:text-gray-400 hover:bg-violet-50 dark:hover:bg-violet-900/20'
               )}
             >
               <Users className="w-3.5 h-3.5" />
@@ -1050,6 +1102,47 @@ export function BucketViewPage() {
             )}
           </div>
 
+          <div className="w-px h-6 bg-gray-200 dark:bg-gray-600" />
+
+          {/* Type filters: Favorites / Hot */}
+          <div className="flex items-center rounded-lg overflow-hidden divide-x divide-violet-400 dark:divide-violet-500 border-2 border-violet-500 dark:border-violet-400">
+            <button
+              onClick={() => setFilterFavorites((v) => !v)}
+              className={clsx('inline-flex items-center justify-center px-2.5 py-1.5', filterFavorites ? 'bg-warning-100 dark:bg-warning-900/30 text-warning-500 dark:text-warning-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800')}
+              title={filterFavorites ? 'Showing favorites only — click to show all' : 'Show favorites only'}
+            >
+              <Star className={clsx('w-3.5 h-3.5 stroke-[2.5]', filterFavorites ? 'fill-warning-400 text-warning-400' : 'fill-none')} />
+            </button>
+            <button
+              onClick={() => setFilterHot((v) => !v)}
+              className={clsx('inline-flex items-center justify-center px-2.5 py-1.5', filterHot ? 'bg-danger-100 dark:bg-danger-900/30 text-danger-500 dark:text-danger-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800')}
+              title={filterHot ? 'Showing hot only — click to show all' : 'Show hot topics only'}
+            >
+              <Flame className={clsx('w-3.5 h-3.5 stroke-[2.5]', filterHot ? 'fill-danger-400' : 'fill-none')} />
+            </button>
+          </div>
+
+          <div className="w-px h-6 bg-gray-200 dark:bg-gray-600" />
+
+          {/* Secondary filters: Done for today / Meta */}
+          <div className="flex items-center rounded-lg overflow-hidden divide-x divide-violet-400 dark:divide-violet-500 border-2 border-violet-500 dark:border-violet-400">
+            <button
+              onClick={() => setShowDismissed((v) => !v)}
+              className={clsx('inline-flex items-center gap-1 px-2.5 py-1.5', showDismissed ? 'bg-success-100 dark:bg-success-900/30 text-success-600 dark:text-success-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800')}
+              title={showDismissed ? 'Hide items done today' : dismissedInFilter > 0 ? `Show ${dismissedInFilter} done today` : 'No items done today'}
+            >
+              <CheckCircle2 className={clsx('w-3.5 h-3.5 stroke-[2]', showDismissed ? 'fill-success-500 text-white' : 'fill-none')} />
+              {dismissedInFilter > 0 && <span className="text-[10px] font-bold">{dismissedInFilter}</span>}
+            </button>
+            <button
+              onClick={() => setShowMeta((v) => !v)}
+              className={clsx('inline-flex items-center justify-center px-2.5 py-1.5', showMeta ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800')}
+              title={showMeta ? 'Hide tags & assignees' : 'Show tags & assignees'}
+            >
+              {showMeta ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
           {activeFilterCount > 0 && (
             <button
               onClick={clearAllFilters}
@@ -1059,7 +1152,9 @@ export function BucketViewPage() {
             </button>
           )}
 
-          <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 font-medium">{filteredItems.length} items</span>
+          <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 font-medium">
+            {visibleItems.length} items
+          </span>
         </div>
 
         {/* Active filter chips */}
@@ -1095,6 +1190,7 @@ export function BucketViewPage() {
             })}
           </div>
         )}
+      </div>
       </div>
 
       {/* Bucket sections */}
